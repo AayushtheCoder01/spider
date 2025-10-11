@@ -7,50 +7,48 @@ export default function Login({ onToggleForm, onLoginSuccess }) {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    // Email validation
-    if (!email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    // Password validation
-    if (!password) {
-      newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
     
-    if (!validateForm()) {
+    // Basic validation
+    if (!email.trim()) {
+      setErrors({ email: 'Email is required' });
+      return;
+    }
+    
+    if (!password) {
+      setErrors({ password: 'Password is required' });
       return;
     }
 
     setLoading(true);
-    setErrors({});
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
-        password,
+        password: password,
       });
       
       if (error) {
-        setErrors({ general: error.message });
+        console.error('Login error:', error);
+        // Show user-friendly error messages
+        if (error.message.includes('Invalid login credentials')) {
+          setErrors({ general: 'Invalid email or password. Please try again.' });
+        } else if (error.message.includes('Email not confirmed')) {
+          setErrors({ general: 'Please verify your email address first.' });
+        } else {
+          setErrors({ general: error.message });
+        }
       } else if (data?.user) {
+        // Clear form and notify success
+        setEmail('');
+        setPassword('');
         onLoginSuccess(data.user);
       }
     } catch (err) {
-      setErrors({ general: 'An unexpected error occurred. Please try again.' });
+      console.error('Unexpected login error:', err);
+      setErrors({ general: 'Unable to login. Please check your connection and try again.' });
     } finally {
       setLoading(false);
     }

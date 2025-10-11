@@ -9,55 +9,43 @@ export default function Signup({ onToggleForm }) {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    // Email validation
-    if (!email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    // Password validation
-    if (!password) {
-      newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    } else if (!/(?=.*[a-z])/.test(password)) {
-      newErrors.password = 'Password must contain at least one lowercase letter';
-    } else if (!/(?=.*[A-Z])/.test(password)) {
-      newErrors.password = 'Password must contain at least one uppercase letter';
-    } else if (!/(?=.*\d)/.test(password)) {
-      newErrors.password = 'Password must contain at least one number';
-    }
-
-    // Confirm password validation
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
+    setSuccess('');
     
-    if (!validateForm()) {
+    // Basic validation
+    if (!email.trim()) {
+      setErrors({ email: 'Email is required' });
+      return;
+    }
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setErrors({ email: 'Please enter a valid email address' });
+      return;
+    }
+    
+    if (!password) {
+      setErrors({ password: 'Password is required' });
+      return;
+    }
+    
+    if (password.length < 6) {
+      setErrors({ password: 'Password must be at least 6 characters' });
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      setErrors({ confirmPassword: 'Passwords do not match' });
       return;
     }
 
     setLoading(true);
-    setErrors({});
-    setSuccess('');
 
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
-        password,
+        password: password,
         options: {
           emailRedirectTo: window.location.origin,
           data: {
@@ -67,15 +55,24 @@ export default function Signup({ onToggleForm }) {
       });
       
       if (error) {
-        setErrors({ general: error.message });
+        console.error('Signup error:', error);
+        if (error.message.includes('already registered')) {
+          setErrors({ general: 'This email is already registered. Please login instead.' });
+        } else {
+          setErrors({ general: error.message });
+        }
       } else if (data?.user) {
         setSuccess('Account created successfully! Redirecting to login...');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
         setTimeout(() => {
           onToggleForm();
         }, 1500);
       }
     } catch (err) {
-      setErrors({ general: 'An unexpected error occurred. Please try again.' });
+      console.error('Unexpected signup error:', err);
+      setErrors({ general: 'Unable to create account. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -158,7 +155,7 @@ export default function Signup({ onToggleForm }) {
                 <p className="mt-1 text-sm text-red-600">{errors.password}</p>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                Must be 6+ characters with uppercase, lowercase, and number
+                Must be at least 6 characters
               </p>
             </div>
 
