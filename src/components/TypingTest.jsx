@@ -113,7 +113,7 @@ const CODE_SNIPPETS = {
   ],
 };
 
-export default function TypingTest({ user }) {
+export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }) {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [isPremium, setIsPremium] = useState(false);
@@ -374,8 +374,30 @@ export default function TypingTest({ user }) {
   return (
     <div 
       className="min-h-screen flex flex-col"
-      style={{ backgroundColor: theme.bg, color: theme.text }}
+      style={{ 
+        backgroundColor: theme.bg, 
+        color: theme.text,
+        fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace"
+      }}
     >
+      {/* Terminal Header Bar */}
+      <div 
+        className="px-4 py-2 flex items-center gap-2"
+        style={{ 
+          backgroundColor: theme.bgSecondary,
+          borderBottom: `1px solid ${theme.border}`
+        }}
+      >
+        <div className="flex gap-2">
+          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ff5f56' }}></div>
+          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ffbd2e' }}></div>
+          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#27c93f' }}></div>
+        </div>
+        <span className="text-xs ml-2" style={{ color: theme.textMuted }}>
+          spidertype@terminal:~$
+        </span>
+      </div>
+
       {/* Top Navigation */}
       <nav 
         className="px-8 py-4"
@@ -434,8 +456,57 @@ export default function TypingTest({ user }) {
             ))}
           </div>
 
-          {/* Empty space for balance - Right (auth buttons are absolutely positioned) */}
-          <div className="w-32"></div>
+          {/* Auth Buttons - Right */}
+          <div className="flex items-center gap-3">
+            {user ? (
+              <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg" style={{ backgroundColor: theme.bgSecondary, border: `1px solid ${theme.border}` }}>
+                <span className="text-xs" style={{ color: theme.textSecondary }}>
+                  {user.email}
+                </span>
+                <div style={{ width: '1px', height: '16px', backgroundColor: theme.border }}></div>
+                <button
+                  onClick={onLogout}
+                  className="px-3 py-1 rounded text-xs font-medium transition"
+                  style={{
+                    backgroundColor: theme.incorrect,
+                    color: '#ffffff'
+                  }}
+                  onMouseEnter={(e) => e.target.style.opacity = '0.9'}
+                  onMouseLeave={(e) => e.target.style.opacity = '1'}
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={onShowLogin}
+                  className="px-3 py-1.5 rounded text-xs transition"
+                  style={{
+                    backgroundColor: theme.buttonBg,
+                    color: theme.text,
+                    border: `1px solid ${theme.border}`
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = theme.buttonHover}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = theme.buttonBg}
+                >
+                  Login
+                </button>
+                <button
+                  onClick={onShowSignup}
+                  className="px-3 py-1.5 rounded text-xs font-medium transition"
+                  style={{
+                    backgroundColor: theme.accent,
+                    color: theme.bg
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = theme.accentHover}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = theme.accent}
+                >
+                  Sign Up
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -485,8 +556,20 @@ export default function TypingTest({ user }) {
           {/* Text Display */}
           <div 
             className="rounded-lg p-8 mb-6 min-h-[200px] relative"
-            style={{ backgroundColor: theme.bgSecondary }}
+            style={{ 
+              backgroundColor: theme.bgSecondary,
+              border: `1px solid ${theme.border}`,
+              boxShadow: `0 0 20px ${theme.accent}10`
+            }}
           >
+            {/* Terminal Prompt */}
+            <div className="flex items-center gap-2 mb-4 pb-2" style={{ borderBottom: `1px solid ${theme.border}` }}>
+              <span style={{ color: theme.accent }}>❯</span>
+              <span className="text-sm" style={{ color: theme.textMuted }}>
+                {language === 'words' ? 'typing practice' : `${language} snippet`}
+              </span>
+            </div>
+
             {!isFinished ? (
               <div className="text-xl leading-relaxed font-mono whitespace-pre-wrap">
                 {text.split('').map((char, index) => (

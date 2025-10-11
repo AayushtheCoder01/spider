@@ -362,7 +362,7 @@ export default function Premium({ user }) {
                 </li>
                 <li className="flex items-center gap-2" style={{ color: theme.text }}>
                   <span style={{ color: theme.correct }}>✓</span>
-                  <strong>🎨 9 Premium Themes</strong>
+                  <strong>🎨 18 Premium Themes</strong>
                 </li>
               </ul>
 
@@ -490,7 +490,7 @@ export default function Premium({ user }) {
                     Premium Themes
                   </h3>
                   <p className="text-sm" style={{ color: theme.textSecondary }}>
-                    9 exclusive themes: Dracula, Monokai, Tokyo Night & more
+                    18 exclusive themes: Cyberpunk, Matrix, Synthwave, Terminal & more
                   </p>
                 </div>
 

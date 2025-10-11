@@ -107,7 +107,7 @@ export default function Dashboard({ user }) {
               className="text-2xl font-bold transition"
               style={{ color: theme.text }}
             >
-              🕷️ Spider
+              🕷️ SpiderType
             </button>
             <button
               onClick={() => navigate('/settings')}
@@ -177,7 +177,7 @@ export default function Dashboard({ user }) {
               className="text-2xl font-bold transition"
               style={{ color: theme.text }}
             >
-              🕷️ Spider
+              🕷️ SpiderType
             </button>
             <PremiumBadge variant="active" label="Premium" subtle />
           </div>

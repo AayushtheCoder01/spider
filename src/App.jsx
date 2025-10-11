@@ -129,59 +129,12 @@ function App() {
         <Route 
           path="/" 
           element={
-            <div className="relative">
-              {/* Top right auth buttons */}
-              <div className="absolute top-4 right-8 z-10 flex items-center gap-4">
-                {user ? (
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm" style={{ color: theme.textSecondary }}>
-                      {user.email}
-                    </span>
-                    <button
-                      onClick={handleLogout}
-                      className="px-4 py-2 rounded-lg text-sm transition"
-                      style={{
-                        backgroundColor: theme.incorrect,
-                        color: '#ffffff'
-                      }}
-                      onMouseEnter={(e) => e.target.style.opacity = '0.9'}
-                      onMouseLeave={(e) => e.target.style.opacity = '1'}
-                    >
-                      Logout
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setShowAuth('login')}
-                      className="px-4 py-2 rounded-lg text-sm transition"
-                      style={{
-                        backgroundColor: theme.buttonBg,
-                        color: theme.text
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = theme.buttonHover}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = theme.buttonBg}
-                    >
-                      Login
-                    </button>
-                    <button
-                      onClick={() => setShowAuth('signup')}
-                      className="px-4 py-2 rounded-lg text-sm font-medium transition"
-                      style={{
-                        backgroundColor: theme.accent,
-                        color: theme.bg
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = theme.accentHover}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = theme.accent}
-                    >
-                      Sign Up
-                    </button>
-                  </>
-                )}
-              </div>
-
-              <TypingTest user={user} />
-            </div>
+            <TypingTest 
+              user={user} 
+              onLogout={handleLogout}
+              onShowLogin={() => setShowAuth('login')}
+              onShowSignup={() => setShowAuth('signup')}
+            />
           } 
         />
         <Route path="/settings" element={<Settings user={user} />} />
