@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const themes = {
   dark: {
     name: 'Dark',
+    free: true,
     bg: '#1a1a1a',
     bgSecondary: '#2a2a2a',
     text: '#d1d5db',
@@ -18,6 +19,7 @@ const themes = {
   },
   light: {
     name: 'Light',
+    free: true,
     bg: '#f9fafb',
     bgSecondary: '#ffffff',
     text: '#1f2937',
@@ -33,6 +35,7 @@ const themes = {
   },
   nord: {
     name: 'Nord',
+    free: true,
     bg: '#2e3440',
     bgSecondary: '#3b4252',
     text: '#eceff4',
@@ -48,6 +51,7 @@ const themes = {
   },
   dracula: {
     name: 'Dracula',
+    premium: true,
     bg: '#282a36',
     bgSecondary: '#44475a',
     text: '#f8f8f2',
@@ -63,6 +67,7 @@ const themes = {
   },
   monokai: {
     name: 'Monokai',
+    premium: true,
     bg: '#272822',
     bgSecondary: '#3e3d32',
     text: '#f8f8f2',
@@ -78,6 +83,7 @@ const themes = {
   },
   gruvbox: {
     name: 'Gruvbox',
+    premium: true,
     bg: '#282828',
     bgSecondary: '#3c3836',
     text: '#ebdbb2',
@@ -93,6 +99,7 @@ const themes = {
   },
   solarized: {
     name: 'Solarized Dark',
+    premium: true,
     bg: '#002b36',
     bgSecondary: '#073642',
     text: '#839496',
@@ -108,6 +115,7 @@ const themes = {
   },
   tokyo: {
     name: 'Tokyo Night',
+    premium: true,
     bg: '#1a1b26',
     bgSecondary: '#24283b',
     text: '#c0caf5',
@@ -123,6 +131,7 @@ const themes = {
   },
   catppuccin: {
     name: 'Catppuccin',
+    premium: true,
     bg: '#1e1e2e',
     bgSecondary: '#313244',
     text: '#cdd6f4',
@@ -138,6 +147,7 @@ const themes = {
   },
   ayu: {
     name: 'Ayu Dark',
+    premium: true,
     bg: '#0a0e14',
     bgSecondary: '#0d1017',
     text: '#b3b1ad',
@@ -153,6 +163,7 @@ const themes = {
   },
   rose: {
     name: 'Rosé Pine',
+    premium: true,
     bg: '#191724',
     bgSecondary: '#1f1d2e',
     text: '#e0def4',
@@ -168,6 +179,7 @@ const themes = {
   },
   palenight: {
     name: 'Palenight',
+    premium: true,
     bg: '#292d3e',
     bgSecondary: '#32364a',
     text: '#a6accd',

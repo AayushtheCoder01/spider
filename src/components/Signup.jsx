@@ -49,7 +49,9 @@ export default function Signup({ onToggleForm }) {
         options: {
           emailRedirectTo: window.location.origin,
           data: {
-            email_confirmed: true
+            email_confirmed: true,
+            tier: 'free',
+            premium_until: null
           }
         }
       });

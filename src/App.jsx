@@ -5,6 +5,8 @@ import Login from './components/Login';
 import Signup from './components/Signup';
 import TypingTest from './components/TypingTest';
 import Settings from './components/Settings';
+import TestDetail from './components/TestDetail';
+import Premium from './components/Premium';
 import { useTheme } from './contexts/ThemeContext';
 
 function App() {
@@ -182,6 +184,8 @@ function App() {
           } 
         />
         <Route path="/settings" element={<Settings user={user} />} />
+        <Route path="/test/:testId" element={<TestDetail user={user} />} />
+        <Route path="/premium" element={<Premium user={user} />} />
       </Routes>
     </>
   );

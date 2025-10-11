@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { supabase } from '../supabase-client';
 
 const CODE_SNIPPETS = {
   javascript: [
@@ -58,22 +59,48 @@ const CODE_SNIPPETS = {
 export default function TypingTest({ user }) {
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const [duration, setDuration] = useState(30);
-  const [language, setLanguage] = useState('javascript');
+  const [duration, setDuration] = useState(() => {
+    const saved = localStorage.getItem('typingDuration');
+    return saved ? parseInt(saved) : 30;
+  });
+  const [language, setLanguage] = useState(() => {
+    const saved = localStorage.getItem('typingLanguage');
+    return saved || 'javascript';
+  });
   
   const [text, setText] = useState('');
   const [userInput, setUserInput] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [startTime, setStartTime] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const saved = localStorage.getItem('typingDuration');
+    return saved ? parseInt(saved) : 30;
+  });
   const [isActive, setIsActive] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   
   const [wpm, setWpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
   const [errors, setErrors] = useState(0);
+  const [wpmHistory, setWpmHistory] = useState([]);
+  const [rawWpm, setRawWpm] = useState(0);
+  const [correctChars, setCorrectChars] = useState(0);
+  const [incorrectChars, setIncorrectChars] = useState(0);
+  const [resultSaved, setResultSaved] = useState(false);
   
   const inputRef = useRef(null);
+  const userInputRef = useRef('');
+  const testFinishedRef = useRef(false);
+
+  // Save duration to localStorage
+  useEffect(() => {
+    localStorage.setItem('typingDuration', duration.toString());
+  }, [duration]);
+
+  // Save language to localStorage
+  useEffect(() => {
+    localStorage.setItem('typingLanguage', language);
+  }, [language]);
 
   // Generate text based on language
   useEffect(() => {
@@ -102,6 +129,23 @@ export default function TypingTest({ user }) {
     return () => clearInterval(interval);
   }, [isActive, timeLeft, isFinished]);
 
+  // Track WPM history every second
+  useEffect(() => {
+    let interval = null;
+    if (isActive && !isFinished && startTime) {
+      interval = setInterval(() => {
+        const timeElapsed = (Date.now() - startTime) / 1000 / 60;
+        const currentInput = userInputRef.current;
+        const wordsTyped = currentInput.trim().split(/\s+/).filter(w => w.length > 0).length;
+        const charsTyped = currentInput.length;
+        // Calculate WPM based on characters (standard: 5 chars = 1 word)
+        const currentWpm = Math.round((charsTyped / 5) / timeElapsed);
+        setWpmHistory(prev => [...prev, currentWpm]);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isActive, isFinished, startTime]);
+
   const handleInputChange = (e) => {
     const value = e.target.value;
     
@@ -112,27 +156,38 @@ export default function TypingTest({ user }) {
     }
 
     setUserInput(value);
+    userInputRef.current = value; // Update ref for WPM tracking
     setCurrentIndex(value.length);
 
-    // Calculate errors
+    // Calculate errors and correct/incorrect chars
     let errorCount = 0;
+    let correct = 0;
+    let incorrect = 0;
     for (let i = 0; i < value.length; i++) {
       if (value[i] !== text[i]) {
         errorCount++;
+        incorrect++;
+      } else {
+        correct++;
       }
     }
     setErrors(errorCount);
+    setCorrectChars(correct);
+    setIncorrectChars(incorrect);
 
     // Calculate accuracy
     const acc = value.length > 0 ? ((value.length - errorCount) / value.length) * 100 : 100;
     setAccuracy(Math.round(acc));
 
-    // Calculate WPM
+    // Calculate WPM (net WPM)
     if (startTime) {
       const timeElapsed = (Date.now() - startTime) / 1000 / 60; // in minutes
-      const wordsTyped = value.trim().split(/\s+/).length;
-      const currentWpm = Math.round(wordsTyped / timeElapsed);
-      setWpm(currentWpm);
+      const charsTyped = value.length;
+      // Standard WPM: 5 characters = 1 word
+      const grossWpm = Math.round((charsTyped / 5) / timeElapsed);
+      const netWpm = Math.max(0, Math.round(grossWpm - (errorCount / 5 / timeElapsed)));
+      setWpm(netWpm);
+      setRawWpm(grossWpm);
     }
 
     // Check if finished
@@ -141,13 +196,74 @@ export default function TypingTest({ user }) {
     }
   };
 
-  const finishTest = () => {
+  const finishTest = async () => {
+    // Prevent duplicate saves
+    if (testFinishedRef.current) {
+      return;
+    }
+    testFinishedRef.current = true;
+
     setIsFinished(true);
     setIsActive(false);
+
+    // Only save result to database if user is logged in
+    if (!user) {
+      console.log('User not logged in, skipping save');
+      setResultSaved(false);
+      return;
+    }
+
+    // Save result to database
+    try {
+      // Calculate consistency
+      const consistency = wpmHistory.length > 0 
+        ? Math.round((1 - (Math.max(...wpmHistory) - Math.min(...wpmHistory)) / Math.max(...wpmHistory)) * 100)
+        : 0;
+
+      const resultData = {
+        user_id: user.id,
+        duration_seconds: duration,
+        time_remaining: timeLeft,
+        language: language,
+        snippet_language: language, // Same as language for now
+        wpm: wpm,
+        raw_wpm: rawWpm,
+        accuracy: accuracy,
+        consistency: consistency,
+        errors: errors,
+        correct_chars: correctChars,
+        incorrect_chars: incorrectChars,
+        // chars_total is auto-generated, don't include it
+        wpm_history: wpmHistory,
+        device_meta: {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          language: navigator.language,
+        },
+      };
+
+      const { data, error } = await supabase
+        .from('typing_results')
+        .insert([resultData])
+        .select();
+
+      if (error) {
+        console.error('Error saving result:', error);
+        setResultSaved(false);
+      } else {
+        console.log('Result saved successfully:', data);
+        setResultSaved(true);
+      }
+    } catch (err) {
+      console.error('Unexpected error saving result:', err);
+      setResultSaved(false);
+    }
   };
 
   const resetTest = () => {
     setUserInput('');
+    userInputRef.current = '';
+    testFinishedRef.current = false; // Reset the finished flag
     setCurrentIndex(0);
     setStartTime(null);
     setTimeLeft(duration);
@@ -156,6 +272,11 @@ export default function TypingTest({ user }) {
     setWpm(0);
     setAccuracy(100);
     setErrors(0);
+    setWpmHistory([]);
+    setRawWpm(0);
+    setCorrectChars(0);
+    setIncorrectChars(0);
+    setResultSaved(false);
     generateText();
     inputRef.current?.focus();
   };
@@ -277,73 +398,272 @@ export default function TypingTest({ user }) {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12">
-                <h2 
-                  className="text-3xl font-bold mb-4"
-                  style={{ color: theme.accent }}
-                >
-                  Test Complete!
-                </h2>
-                <div className="flex justify-center gap-12 mb-8">
+              <div className="py-8">
+                {/* Top Stats Row */}
+                <div className="flex items-start justify-between mb-8">
+                  {/* Left: WPM and Accuracy */}
                   <div>
-                    <div 
-                      className="text-4xl font-bold"
-                      style={{ color: theme.accent }}
-                    >
-                      {wpm}
+                    <div className="mb-4">
+                      <div className="text-sm mb-1" style={{ color: theme.textMuted }}>wpm</div>
+                      <div className="text-6xl font-bold" style={{ color: theme.accent }}>{wpm}</div>
                     </div>
-                    <div className="text-sm" style={{ color: theme.textMuted }}>WPM</div>
+                    <div>
+                      <div className="text-sm mb-1" style={{ color: theme.textMuted }}>acc</div>
+                      <div className="text-6xl font-bold" style={{ color: theme.accent }}>{accuracy}%</div>
+                    </div>
                   </div>
-                  <div>
-                    <div 
-                      className="text-4xl font-bold"
-                      style={{ color: theme.correct }}
-                    >
-                      {accuracy}%
+
+                  {/* Right: Additional Stats */}
+                  <div className="text-right space-y-2">
+                    <div>
+                      <div className="text-xs" style={{ color: theme.textMuted }}>test type</div>
+                      <div className="text-sm" style={{ color: theme.accent }}>time {duration}</div>
                     </div>
-                    <div className="text-sm" style={{ color: theme.textMuted }}>Accuracy</div>
-                  </div>
-                  <div>
-                    <div 
-                      className="text-4xl font-bold"
-                      style={{ color: theme.incorrect }}
-                    >
-                      {errors}
+                    <div>
+                      <div className="text-xs" style={{ color: theme.textMuted }}>language</div>
+                      <div className="text-sm" style={{ color: theme.accent }}>{language}</div>
                     </div>
-                    <div className="text-sm" style={{ color: theme.textMuted }}>Errors</div>
                   </div>
                 </div>
-                <button
-                  onClick={resetTest}
-                  className="px-6 py-2 rounded-lg transition font-medium"
-                  style={{
-                    backgroundColor: theme.accent,
-                    color: theme.bg
-                  }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = theme.accentHover}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = theme.accent}
-                >
-                  Try Again
-                </button>
+
+                {/* WPM Graph */}
+                <div className="mb-8 relative" style={{ height: '200px', padding: '20px 0' }}>
+                  <svg width="100%" height="200" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                    <defs>
+                      {/* Gradient for line */}
+                      <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style={{ stopColor: theme.accent, stopOpacity: 1 }} />
+                        <stop offset="100%" style={{ stopColor: theme.accent, stopOpacity: 0.6 }} />
+                      </linearGradient>
+                      
+                      {/* Gradient for area fill */}
+                      <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style={{ stopColor: theme.accent, stopOpacity: 0.2 }} />
+                        <stop offset="100%" style={{ stopColor: theme.accent, stopOpacity: 0 }} />
+                      </linearGradient>
+                    </defs>
+                    
+                    {/* Grid lines */}
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
+                      <line
+                        key={`grid-${i}`}
+                        x1="0"
+                        y1={i * 40}
+                        x2="100%"
+                        y2={i * 40}
+                        stroke={theme.border}
+                        strokeWidth="1"
+                        opacity="0.2"
+                      />
+                    ))}
+                    
+                    {/* Vertical time markers */}
+                    {wpmHistory.length > 1 && [0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                      const x = ratio * 100;
+                      return (
+                        <g key={`marker-${idx}`}>
+                          <line
+                            x1={`${x}%`}
+                            y1="0"
+                            x2={`${x}%`}
+                            y2="200"
+                            stroke={theme.border}
+                            strokeWidth="1"
+                            opacity="0.15"
+                            strokeDasharray="4,4"
+                          />
+                          <text
+                            x={`${x}%`}
+                            y="195"
+                            fill={theme.textMuted}
+                            fontSize="10"
+                            textAnchor="middle"
+                            opacity="0.6"
+                          >
+                            {Math.round(ratio * duration)}s
+                          </text>
+                        </g>
+                      );
+                    })}
+                    
+                    {/* Area fill under the line */}
+                    {wpmHistory.length > 1 && (
+                      <polygon
+                        points={
+                          wpmHistory.map((w, i) => {
+                            const x = (i / (wpmHistory.length - 1)) * 100;
+                            const maxWpm = Math.max(...wpmHistory, 50);
+                            const y = 180 - ((w / maxWpm) * 160);
+                            return `${x}%,${y}`;
+                          }).join(' ') + ` 100%,180 0,180`
+                        }
+                        fill="url(#areaGradient)"
+                      />
+                    )}
+                    
+                    {/* WPM Line */}
+                    {wpmHistory.length > 1 && (
+                      <>
+                        <polyline
+                          points={wpmHistory.map((w, i) => {
+                            const x = (i / (wpmHistory.length - 1)) * 100;
+                            const maxWpm = Math.max(...wpmHistory, 50);
+                            const y = 180 - ((w / maxWpm) * 160);
+                            return `${x}%,${y}`;
+                          }).join(' ')}
+                          fill="none"
+                          stroke="url(#lineGradient)"
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        
+                        {/* Data points */}
+                        {wpmHistory.map((w, i) => {
+                          const x = (i / (wpmHistory.length - 1)) * 100;
+                          const maxWpm = Math.max(...wpmHistory, 50);
+                          const y = 180 - ((w / maxWpm) * 160);
+                          return (
+                            <circle
+                              key={`point-${i}`}
+                              cx={`${x}%`}
+                              cy={y}
+                              r="3"
+                              fill={theme.accent}
+                              opacity="0.8"
+                            />
+                          );
+                        })}
+                      </>
+                    )}
+                    
+                    {/* No data message */}
+                    {wpmHistory.length <= 1 && (
+                      <text
+                        x="50%"
+                        y="100"
+                        fill={theme.textMuted}
+                        fontSize="14"
+                        textAnchor="middle"
+                        opacity="0.5"
+                      >
+                        Not enough data to display graph
+                      </text>
+                    )}
+                  </svg>
+                </div>
+
+                {/* Bottom Stats Grid */}
+                <div className="grid grid-cols-4 gap-6 mb-8">
+                  <div>
+                    <div className="text-xs mb-1" style={{ color: theme.textMuted }}>raw</div>
+                    <div className="text-2xl font-bold" style={{ color: theme.accent }}>{rawWpm}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs mb-1" style={{ color: theme.textMuted }}>characters</div>
+                    <div className="text-2xl font-bold" style={{ color: theme.accent }}>
+                      {correctChars}/{incorrectChars}/{errors}/0
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs mb-1" style={{ color: theme.textMuted }}>consistency</div>
+                    <div className="text-2xl font-bold" style={{ color: theme.accent }}>
+                      {wpmHistory.length > 0 ? Math.round((1 - (Math.max(...wpmHistory) - Math.min(...wpmHistory)) / Math.max(...wpmHistory)) * 100) : 0}%
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs mb-1" style={{ color: theme.textMuted }}>time</div>
+                    <div className="text-2xl font-bold" style={{ color: theme.accent }}>{duration}s</div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    onClick={resetTest}
+                    className="p-3 rounded-lg transition"
+                    style={{
+                      backgroundColor: theme.buttonBg,
+                      color: theme.textSecondary
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = theme.buttonHover}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = theme.buttonBg}
+                    title="Next test"
+                  >
+                    <span className="text-xl">→</span>
+                  </button>
+                  <button
+                    onClick={resetTest}
+                    className="p-3 rounded-lg transition"
+                    style={{
+                      backgroundColor: theme.buttonBg,
+                      color: theme.textSecondary
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = theme.buttonHover}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = theme.buttonBg}
+                    title="Repeat test"
+                  >
+                    <span className="text-xl">↻</span>
+                  </button>
+                </div>
+
+                {/* Save status message */}
+                <div className="text-center mt-6">
+                  {user && resultSaved && (
+                    <div 
+                      className="inline-block px-4 py-2 rounded-lg"
+                      style={{ 
+                        backgroundColor: theme.correct + '20',
+                        border: `1px solid ${theme.correct}`
+                      }}
+                    >
+                      <p className="text-sm font-medium" style={{ color: theme.correct }}>
+                        ✓ Result saved successfully
+                      </p>
+                    </div>
+                  )}
+                  {!user && (
+                    <div 
+                      className="inline-block px-6 py-3 rounded-lg"
+                      style={{ 
+                        backgroundColor: theme.incorrect + '15',
+                        border: `1px solid ${theme.incorrect}`
+                      }}
+                    >
+                      <p className="text-sm font-medium mb-1" style={{ color: theme.incorrect }}>
+                        ⚠️ Data not saved
+                      </p>
+                      <p className="text-xs" style={{ color: theme.textMuted }}>
+                        Please login to save your results and track your progress
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
 
           {/* Hidden Input */}
           {!isFinished && (
-            <input
+            <textarea
               ref={inputRef}
-              type="text"
               value={userInput}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 rounded-lg font-mono focus:outline-none"
+              className="w-full px-4 py-3 rounded-lg font-mono focus:outline-none resize-none"
               style={{
                 backgroundColor: theme.bg,
                 color: theme.text,
-                border: `1px solid ${theme.border}`
+                border: `1px solid ${theme.border}`,
+                minHeight: '100px'
               }}
               placeholder="Start typing to begin..."
               autoFocus
+              onKeyDown={(e) => {
+                // Prevent form submission on Enter
+                if (e.key === 'Enter') {
+                  e.stopPropagation();
+                }
+              }}
             />
           )}
 
