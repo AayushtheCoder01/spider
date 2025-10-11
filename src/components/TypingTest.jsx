@@ -3,7 +3,33 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../supabase-client';
 
+const WORD_LIST = [
+  'the', 'quick', 'brown', 'fox', 'jumps', 'over', 'lazy', 'dog', 'and', 'runs', 'through', 'forest',
+  'beautiful', 'morning', 'sunshine', 'brings', 'happiness', 'everyone', 'around', 'world', 'today',
+  'technology', 'advances', 'rapidly', 'changing', 'lives', 'people', 'everywhere', 'making', 'easier',
+  'learning', 'programming', 'requires', 'practice', 'patience', 'dedication', 'achieve', 'mastery',
+  'typing', 'speed', 'accuracy', 'important', 'skills', 'develop', 'improve', 'productivity',
+  'computer', 'keyboard', 'monitor', 'mouse', 'software', 'hardware', 'internet', 'network',
+  'creative', 'thinking', 'problem', 'solving', 'critical', 'analysis', 'effective', 'communication',
+  'success', 'comes', 'hard', 'work', 'perseverance', 'never', 'giving', 'dreams', 'goals',
+];
+
+const generateWordSentence = (wordCount = 50) => {
+  const words = [];
+  for (let i = 0; i < wordCount; i++) {
+    words.push(WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)]);
+  }
+  return words.join(' ');
+};
+
 const CODE_SNIPPETS = {
+  words: [
+    generateWordSentence(50),
+    generateWordSentence(50),
+    generateWordSentence(50),
+    generateWordSentence(50),
+    generateWordSentence(50),
+  ],
   javascript: [
     'function calculateSum(a, b) {\n  return a + b;\n}',
     'const array = [1, 2, 3, 4, 5];\nconst doubled = array.map(x => x * 2);',
@@ -13,6 +39,18 @@ const CODE_SNIPPETS = {
     'const users = data.filter(user => user.active);\nconst names = users.map(u => u.name);',
     'try {\n  const result = await api.call();\n} catch (error) {\n  console.error(error);\n}',
     'export default function Component() {\n  const [state, setState] = useState(0);\n  return <div>{state}</div>;\n}',
+    'const debounce = (func, delay) => {\n  let timeoutId;\n  return (...args) => {\n    clearTimeout(timeoutId);\n    timeoutId = setTimeout(() => func(...args), delay);\n  };\n}',
+    'const deepClone = obj => JSON.parse(JSON.stringify(obj));',
+    'const promise = new Promise((resolve, reject) => {\n  setTimeout(() => resolve("Done"), 1000);\n});',
+    'const obj = { a: 1, b: 2, c: 3 };\nconst { a, ...rest } = obj;',
+  ],
+  react: [
+    'import React, { useState } from "react";\n\nfunction Counter() {\n  const [count, setCount] = useState(0);\n  return <button onClick={() => setCount(count + 1)}>{count}</button>;\n}',
+    'useEffect(() => {\n  const timer = setInterval(() => {\n    setTime(Date.now());\n  }, 1000);\n  return () => clearInterval(timer);\n}, []);',
+    'const [data, setData] = useState(null);\nconst [loading, setLoading] = useState(true);\n\nuseEffect(() => {\n  fetch("/api/data")\n    .then(res => res.json())\n    .then(setData)\n    .finally(() => setLoading(false));\n}, []);',
+    'const MyComponent = ({ title, children }) => {\n  return (\n    <div className="container">\n      <h1>{title}</h1>\n      {children}\n    </div>\n  );\n};',
+    'const [form, setForm] = useState({ name: "", email: "" });\n\nconst handleChange = (e) => {\n  setForm({ ...form, [e.target.name]: e.target.value });\n};',
+    'import { useContext } from "react";\nimport { ThemeContext } from "./ThemeContext";\n\nconst { theme, setTheme } = useContext(ThemeContext);',
   ],
   python: [
     'def calculate_sum(a, b):\n    return a + b',
@@ -23,6 +61,10 @@ const CODE_SNIPPETS = {
     'with open("file.txt", "r") as f:\n    content = f.read()',
     'for i in range(10):\n    if i % 2 == 0:\n        print(i)',
     '@decorator\ndef my_function():\n    pass',
+    'def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)',
+    'import pandas as pd\ndf = pd.read_csv("data.csv")\nprint(df.head())',
+    'try:\n    result = 10 / 0\nexcept ZeroDivisionError as e:\n    print(f"Error: {e}")',
+    'data = {"name": "John", "age": 30}\njson_str = json.dumps(data, indent=2)',
   ],
   java: [
     'public int calculateSum(int a, int b) {\n    return a + b;\n}',
@@ -30,35 +72,51 @@ const CODE_SNIPPETS = {
     'public class Person {\n    private String name;\n    public Person(String name) {\n        this.name = name;\n    }\n}',
     'for (int i = 0; i < 10; i++) {\n    System.out.println(i);\n}',
     'try {\n    // code\n} catch (Exception e) {\n    e.printStackTrace();\n}',
+    'public interface Drawable {\n    void draw();\n}',
+    'List<String> list = new ArrayList<>();\nlist.stream().filter(s -> s.length() > 3).collect(Collectors.toList());',
+    'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World");\n    }\n}',
   ],
   typescript: [
     'interface User {\n  name: string;\n  age: number;\n}',
     'const greet = (name: string): string => {\n  return `Hello, ${name}`;\n}',
     'type Status = "active" | "inactive";\nconst status: Status = "active";',
     'function fetchData<T>(url: string): Promise<T> {\n  return fetch(url).then(r => r.json());\n}',
+    'enum Color {\n  Red = "RED",\n  Green = "GREEN",\n  Blue = "BLUE"\n}',
+    'type Partial<T> = {\n  [P in keyof T]?: T[P];\n};',
+    'const user: User = {\n  id: 1,\n  name: "John",\n  email: "john@example.com"\n};',
   ],
   cpp: [
     '#include <iostream>\nusing namespace std;\nint main() {\n  cout << "Hello" << endl;\n  return 0;\n}',
     'vector<int> nums = {1, 2, 3, 4, 5};\nfor (int n : nums) {\n  cout << n << endl;\n}',
     'class Person {\nprivate:\n  string name;\npublic:\n  Person(string n) : name(n) {}\n};',
+    'int factorial(int n) {\n  return (n <= 1) ? 1 : n * factorial(n - 1);\n}',
+    'auto lambda = [](int x, int y) { return x + y; };\nint result = lambda(5, 3);',
+    '#include <algorithm>\nvector<int> v = {3, 1, 4, 1, 5};\nsort(v.begin(), v.end());',
   ],
   go: [
     'func calculateSum(a, b int) int {\n  return a + b\n}',
     'for i := 0; i < 10; i++ {\n  fmt.Println(i)\n}',
     'type Person struct {\n  Name string\n  Age  int\n}',
     'if err != nil {\n  return err\n}',
+    'func main() {\n  ch := make(chan int)\n  go func() {\n    ch <- 42\n  }()\n  value := <-ch\n}',
+    'defer file.Close()\ndata, err := ioutil.ReadAll(file)',
+    'slice := []int{1, 2, 3, 4, 5}\nslice = append(slice, 6, 7, 8)',
   ],
   rust: [
     'fn calculate_sum(a: i32, b: i32) -> i32 {\n    a + b\n}',
     'let numbers = vec![1, 2, 3, 4, 5];\nlet doubled: Vec<i32> = numbers.iter().map(|x| x * 2).collect();',
     'struct Person {\n    name: String,\n    age: u32,\n}',
     'match result {\n    Ok(value) => println!("{}", value),\n    Err(e) => eprintln!("Error: {}", e),\n}',
+    'let mut v = vec![1, 2, 3];\nv.push(4);\nv.pop();',
+    'fn fibonacci(n: u32) -> u32 {\n    match n {\n        0 => 0,\n        1 => 1,\n        _ => fibonacci(n - 1) + fibonacci(n - 2),\n    }\n}',
+    'impl Person {\n    fn new(name: String, age: u32) -> Self {\n        Person { name, age }\n    }\n}',
   ],
 };
 
 export default function TypingTest({ user }) {
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const [isPremium, setIsPremium] = useState(false);
   const [duration, setDuration] = useState(() => {
     const saved = localStorage.getItem('typingDuration');
     return saved ? parseInt(saved) : 30;
@@ -90,6 +148,28 @@ export default function TypingTest({ user }) {
   
   const inputRef = useRef(null);
   const userInputRef = useRef('');
+
+  // Check premium status
+  useEffect(() => {
+    const checkPremium = async () => {
+      if (!user) {
+        setIsPremium(false);
+        return;
+      }
+
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('tier, premium_until')
+        .eq('id', user.id)
+        .single();
+
+      const now = new Date();
+      const isExpired = profileData?.premium_until && new Date(profileData.premium_until) < now;
+      setIsPremium(profileData?.tier === 'premium' && !isExpired);
+    };
+
+    checkPremium();
+  }, [user]);
   const testFinishedRef = useRef(false);
 
   // Save duration to localStorage
@@ -302,19 +382,35 @@ export default function TypingTest({ user }) {
         style={{ borderBottom: `1px solid ${theme.border}` }}
       >
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          {/* Settings Button - Left */}
-          <button
-            onClick={() => navigate('/settings')}
-            className="px-4 py-2 rounded-lg text-sm transition"
-            style={{
-              backgroundColor: theme.buttonBg,
-              color: theme.textSecondary
-            }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = theme.buttonHover}
-            onMouseLeave={(e) => e.target.style.backgroundColor = theme.buttonBg}
-          >
-            ⚙️ Settings
-          </button>
+          {/* Navigation Buttons - Left */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/settings')}
+              className="px-4 py-2 rounded-lg text-sm transition"
+              style={{
+                backgroundColor: theme.buttonBg,
+                color: theme.textSecondary
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = theme.buttonHover}
+              onMouseLeave={(e) => e.target.style.backgroundColor = theme.buttonBg}
+            >
+              ⚙️ Settings
+            </button>
+            {isPremium && (
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="px-4 py-2 rounded-lg text-sm transition"
+                style={{
+                  backgroundColor: theme.buttonBg,
+                  color: theme.textSecondary
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = theme.buttonHover}
+                onMouseLeave={(e) => e.target.style.backgroundColor = theme.buttonBg}
+              >
+                📊 Dashboard
+              </button>
+            )}
+          </div>
 
           {/* Duration Selection - Center */}
           <div className="flex items-center gap-3 text-sm">
@@ -373,7 +469,9 @@ export default function TypingTest({ user }) {
                   border: `1px solid ${theme.border}`
                 }}
               >
+                <option value="words">Words</option>
                 <option value="javascript">JavaScript</option>
+                <option value="react">React</option>
                 <option value="python">Python</option>
                 <option value="java">Java</option>
                 <option value="typescript">TypeScript</option>

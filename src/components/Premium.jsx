@@ -251,15 +251,14 @@ export default function Premium({ user }) {
                 border: `2px solid ${theme.correct}`
               }}
             >
-              <div className="text-4xl mb-2">⭐</div>
               <h2 className="text-2xl font-bold mb-2" style={{ color: theme.correct }}>
-                You're Premium!
+                ✓ Premium Active
               </h2>
-              <p style={{ color: theme.text }}>
-                Your subscription is active until{' '}
+              <p style={{ color: theme.textMuted }}>
+                Active until{' '}
                 <strong>
                   {premiumUntil?.toLocaleDateString('en-US', {
-                    month: 'long',
+                    month: 'short',
                     day: 'numeric',
                     year: 'numeric'
                   })}
@@ -269,50 +268,34 @@ export default function Premium({ user }) {
           )}
 
           {/* Pricing Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Free Tier */}
             <div 
-              className="p-8 rounded-lg"
+              className="p-6 rounded-lg"
               style={{ 
                 backgroundColor: theme.bgSecondary,
-                border: `2px solid ${!isPremium || isExpired ? theme.accent : theme.border}`
+                border: `1px solid ${theme.border}`
               }}
             >
-              <h3 className="text-2xl font-bold mb-2" style={{ color: theme.text }}>
+              <h3 className="text-xl font-bold mb-1" style={{ color: theme.text }}>
                 Free
               </h3>
-              <div className="text-4xl font-bold mb-6" style={{ color: theme.accent }}>
-                $0<span className="text-lg" style={{ color: theme.textMuted }}>/month</span>
+              <div className="text-3xl font-bold mb-4" style={{ color: theme.textMuted }}>
+                $0
               </div>
               
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-start gap-2">
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-center gap-2" style={{ color: theme.textSecondary }}>
                   <span style={{ color: theme.correct }}>✓</span>
-                  <span style={{ color: theme.textSecondary }}>Unlimited typing tests</span>
+                  Unlimited tests
                 </li>
-                <li className="flex items-start gap-2">
+                <li className="flex items-center gap-2" style={{ color: theme.textSecondary }}>
                   <span style={{ color: theme.correct }}>✓</span>
-                  <span style={{ color: theme.textSecondary }}>Multiple programming languages</span>
+                  Basic stats
                 </li>
-                <li className="flex items-start gap-2">
+                <li className="flex items-center gap-2" style={{ color: theme.textSecondary }}>
                   <span style={{ color: theme.correct }}>✓</span>
-                  <span style={{ color: theme.textSecondary }}>Basic statistics</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span style={{ color: theme.correct }}>✓</span>
-                  <span style={{ color: theme.textSecondary }}>Last 10 test results</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span style={{ color: theme.textMuted }}>✗</span>
-                  <span style={{ color: theme.textMuted }}>Detailed test analytics</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span style={{ color: theme.textMuted }}>✗</span>
-                  <span style={{ color: theme.textMuted }}>Full test history</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span style={{ color: theme.correct }}>✓</span>
-                  <span style={{ color: theme.textSecondary }}>3 basic themes only</span>
+                  3 themes
                 </li>
               </ul>
 
@@ -331,72 +314,55 @@ export default function Premium({ user }) {
 
             {/* Premium Tier */}
             <div 
-              className="p-8 rounded-lg relative"
+              className="p-6 rounded-lg relative"
               style={{ 
                 backgroundColor: theme.bgSecondary,
-                border: `2px solid ${isPremium && !isExpired ? theme.accent : theme.border}`
+                border: `2px solid ${theme.accent}`,
+                boxShadow: `0 4px 20px ${theme.accent}20`
               }}
             >
-              {/* Premium Badge */}
-              <div 
-                className="absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-1 rounded-full text-sm font-bold"
-                style={{ 
-                  backgroundColor: theme.accent,
-                  color: theme.bg 
-                }}
-              >
-                ⭐ PREMIUM
-              </div>
-
-              <h3 className="text-2xl font-bold mb-2 mt-2" style={{ color: theme.text }}>
-                Premium
-              </h3>
-              <div className="mb-6">
-                <div className="text-4xl font-bold line-through opacity-50" style={{ color: theme.textMuted }}>
-                  $9.99<span className="text-lg">/month</span>
-                </div>
-                <div className="text-5xl font-bold" style={{ color: theme.correct }}>
-                  FREE<span className="text-lg" style={{ color: theme.textMuted }}> for 1 month</span>
-                </div>
-                <div 
-                  className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold"
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-xl font-bold" style={{ color: theme.text }}>
+                  Premium
+                </h3>
+                <span 
+                  className="px-2 py-1 rounded text-xs font-bold"
                   style={{ 
                     backgroundColor: theme.correct,
                     color: theme.bg 
                   }}
                 >
-                  🎉 LIMITED TIME OFFER
-                </div>
+                  FREE
+                </span>
+              </div>
+              <div className="text-3xl font-bold mb-4" style={{ color: theme.accent }}>
+                $0<span className="text-sm line-through opacity-50 ml-2" style={{ color: theme.textMuted }}>$9.99</span>
               </div>
               
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-start gap-2">
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-center gap-2" style={{ color: theme.textSecondary }}>
                   <span style={{ color: theme.correct }}>✓</span>
-                  <span style={{ color: theme.textSecondary }}>Everything in Free</span>
+                  Everything in Free
                 </li>
-                <li className="flex items-start gap-2">
-                  <PremiumBadge variant="active" label="Detailed analytics" subtle className="mt-0.5" />
-                  <span style={{ color: theme.textSecondary }}>
-                    <strong>Detailed test analytics</strong>
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
+                <li className="flex items-center gap-2" style={{ color: theme.text }}>
                   <span style={{ color: theme.correct }}>✓</span>
-                  <span style={{ color: theme.textSecondary }}>
-                    <strong>Unlimited test history</strong>
-                  </span>
+                  <strong>📊 Analytics Dashboard</strong>
                 </li>
-                <li className="flex items-start gap-2">
+                <li className="flex items-center gap-2" style={{ color: theme.text }}>
                   <span style={{ color: theme.correct }}>✓</span>
-                  <span style={{ color: theme.textSecondary }}>
-                    <strong>Performance graphs</strong>
-                  </span>
+                  <strong>🏆 Performance Insights</strong>
                 </li>
-                <li className="flex items-start gap-2">
+                <li className="flex items-center gap-2" style={{ color: theme.text }}>
                   <span style={{ color: theme.correct }}>✓</span>
-                  <span style={{ color: theme.textSecondary }}>
-                    <strong>9 exclusive premium themes</strong>
-                  </span>
+                  <strong>📈 Progress Tracking</strong>
+                </li>
+                <li className="flex items-center gap-2" style={{ color: theme.text }}>
+                  <span style={{ color: theme.correct }}>✓</span>
+                  <strong>♾️ Unlimited History</strong>
+                </li>
+                <li className="flex items-center gap-2" style={{ color: theme.text }}>
+                  <span style={{ color: theme.correct }}>✓</span>
+                  <strong>🎨 9 Premium Themes</strong>
                 </li>
               </ul>
 
@@ -452,6 +418,118 @@ export default function Premium({ user }) {
               )}
             </div>
           </div>
+
+          {/* Premium Perks Section */}
+          {!isPremium && (
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: theme.text }}>
+                What You Get with Premium
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Dashboard */}
+                <div 
+                  className="p-6 rounded-lg text-center"
+                  style={{ 
+                    backgroundColor: theme.bgSecondary,
+                    border: `1px solid ${theme.border}`
+                  }}
+                >
+                  <div className="text-4xl mb-3">📊</div>
+                  <h3 className="text-lg font-bold mb-2" style={{ color: theme.text }}>
+                    Analytics Dashboard
+                  </h3>
+                  <p className="text-sm" style={{ color: theme.textSecondary }}>
+                    View daily and weekly stats with detailed performance metrics
+                  </p>
+                </div>
+
+                {/* Insights */}
+                <div 
+                  className="p-6 rounded-lg text-center"
+                  style={{ 
+                    backgroundColor: theme.bgSecondary,
+                    border: `1px solid ${theme.border}`
+                  }}
+                >
+                  <div className="text-4xl mb-3">🏆</div>
+                  <h3 className="text-lg font-bold mb-2" style={{ color: theme.text }}>
+                    Performance Insights
+                  </h3>
+                  <p className="text-sm" style={{ color: theme.textSecondary }}>
+                    Best scores, consistency tracking, and improvement trends
+                  </p>
+                </div>
+
+                {/* History */}
+                <div 
+                  className="p-6 rounded-lg text-center"
+                  style={{ 
+                    backgroundColor: theme.bgSecondary,
+                    border: `1px solid ${theme.border}`
+                  }}
+                >
+                  <div className="text-4xl mb-3">♾️</div>
+                  <h3 className="text-lg font-bold mb-2" style={{ color: theme.text }}>
+                    Unlimited History
+                  </h3>
+                  <p className="text-sm" style={{ color: theme.textSecondary }}>
+                    Access all your past tests with detailed breakdowns
+                  </p>
+                </div>
+
+                {/* Themes */}
+                <div 
+                  className="p-6 rounded-lg text-center"
+                  style={{ 
+                    backgroundColor: theme.bgSecondary,
+                    border: `1px solid ${theme.border}`
+                  }}
+                >
+                  <div className="text-4xl mb-3">🎨</div>
+                  <h3 className="text-lg font-bold mb-2" style={{ color: theme.text }}>
+                    Premium Themes
+                  </h3>
+                  <p className="text-sm" style={{ color: theme.textSecondary }}>
+                    9 exclusive themes: Dracula, Monokai, Tokyo Night & more
+                  </p>
+                </div>
+
+                {/* Language Stats */}
+                <div 
+                  className="p-6 rounded-lg text-center"
+                  style={{ 
+                    backgroundColor: theme.bgSecondary,
+                    border: `1px solid ${theme.border}`
+                  }}
+                >
+                  <div className="text-4xl mb-3">💻</div>
+                  <h3 className="text-lg font-bold mb-2" style={{ color: theme.text }}>
+                    Language Analytics
+                  </h3>
+                  <p className="text-sm" style={{ color: theme.textSecondary }}>
+                    Track your most practiced languages and progress per language
+                  </p>
+                </div>
+
+                {/* Progress */}
+                <div 
+                  className="p-6 rounded-lg text-center"
+                  style={{ 
+                    backgroundColor: theme.bgSecondary,
+                    border: `1px solid ${theme.border}`
+                  }}
+                >
+                  <div className="text-4xl mb-3">🚀</div>
+                  <h3 className="text-lg font-bold mb-2" style={{ color: theme.text }}>
+                    Progress Tracking
+                  </h3>
+                  <p className="text-sm" style={{ color: theme.textSecondary }}>
+                    See your improvement over time with trend analysis
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Subscription Details (for premium users) */}
           {isPremium && !isExpired && userProfile && (
