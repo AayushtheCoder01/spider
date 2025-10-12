@@ -15,14 +15,26 @@ const WORD_LIST = [
   'tell', 'make', 'know', 'take', 'come', 'give', 'look', 'want', 'find', 'call', 'feel', 'try',
   'ask', 'need', 'seem', 'help', 'talk', 'turn', 'show', 'hear', 'play', 'run', 'move', 'like',
   'live', 'think', 'work', 'keep', 'start', 'grow', 'open', 'walk', 'begin', 'might', 'next',
+  'write', 'read', 'learn', 'teach', 'build', 'create', 'design', 'develop', 'test', 'debug',
+  'code', 'program', 'compile', 'execute', 'deploy', 'maintain', 'update', 'refactor', 'optimize',
   
   // Simple descriptive words
   'good', 'new', 'first', 'last', 'long', 'great', 'little', 'own', 'other', 'old', 'right', 'big',
   'high', 'small', 'large', 'next', 'early', 'young', 'few', 'public', 'bad', 'same', 'able',
+  'fast', 'slow', 'quick', 'easy', 'hard', 'simple', 'complex', 'modern', 'ancient', 'bright',
+  'dark', 'light', 'heavy', 'clean', 'dirty', 'fresh', 'stale', 'warm', 'cold', 'hot',
   
   // Common nouns
   'time', 'person', 'year', 'thing', 'man', 'world', 'life', 'hand', 'part', 'child', 'eye', 'woman',
   'place', 'work', 'week', 'case', 'point', 'group', 'room', 'fact', 'money', 'water', 'day', 'area',
+  'book', 'story', 'idea', 'number', 'letter', 'word', 'sentence', 'page', 'chapter', 'title',
+  'system', 'process', 'method', 'function', 'variable', 'constant', 'array', 'object', 'class',
+  
+  // Tech and programming words
+  'algorithm', 'database', 'server', 'client', 'framework', 'library', 'module', 'package',
+  'interface', 'implementation', 'abstraction', 'encapsulation', 'inheritance', 'polymorphism',
+  'async', 'await', 'promise', 'callback', 'event', 'listener', 'handler', 'component',
+  'state', 'props', 'render', 'mount', 'update', 'lifecycle', 'hook', 'context',
   
   // Original words for variety
   'quick', 'brown', 'fox', 'jumps', 'over', 'lazy', 'dog', 'runs', 'through', 'forest',
@@ -33,6 +45,8 @@ const WORD_LIST = [
   'computer', 'keyboard', 'monitor', 'mouse', 'software', 'hardware', 'internet', 'network',
   'creative', 'thinking', 'problem', 'solving', 'critical', 'analysis', 'effective', 'communication',
   'success', 'comes', 'hard', 'perseverance', 'never', 'giving', 'dreams', 'goals',
+  'challenge', 'opportunity', 'growth', 'journey', 'adventure', 'experience', 'knowledge', 'wisdom',
+  'innovation', 'revolution', 'evolution', 'transformation', 'progress', 'achievement', 'excellence',
 ];
 
 const generateWordSentence = (wordCount = 50) => {
@@ -40,6 +54,7 @@ const generateWordSentence = (wordCount = 50) => {
   for (let i = 0; i < wordCount; i++) {
     words.push(WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)]);
   }
+  // Join with spaces - natural word wrapping will handle line breaks
   return words.join(' ');
 };
 
@@ -64,6 +79,11 @@ const CODE_SNIPPETS = {
     'const deepClone = obj => JSON.parse(JSON.stringify(obj));',
     'const promise = new Promise((resolve, reject) => {\n  setTimeout(() => resolve("Done"), 1000);\n});',
     'const obj = { a: 1, b: 2, c: 3 };\nconst { a, ...rest } = obj;',
+    'const fetchUsers = async () => {\n  try {\n    const res = await fetch("/api/users");\n    return await res.json();\n  } catch (err) {\n    console.error(err);\n  }\n}',
+    'const sortArray = arr => arr.sort((a, b) => a - b);',
+    'function fibonacci(n) {\n  if (n <= 1) return n;\n  return fibonacci(n - 1) + fibonacci(n - 2);\n}',
+    'const throttle = (fn, wait) => {\n  let time = Date.now();\n  return function() {\n    if (time + wait - Date.now() < 0) {\n      fn();\n      time = Date.now();\n    }\n  }\n}',
+    'const memoize = fn => {\n  const cache = {};\n  return (...args) => {\n    const key = JSON.stringify(args);\n    return cache[key] || (cache[key] = fn(...args));\n  };\n}',
   ],
   react: [
     'import React, { useState } from "react";\n\nfunction Counter() {\n  const [count, setCount] = useState(0);\n  return <button onClick={() => setCount(count + 1)}>{count}</button>;\n}',
@@ -169,6 +189,7 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
   
   const inputRef = useRef(null);
   const userInputRef = useRef('');
+  const textDisplayRef = useRef(null);
 
   // Check premium status
   useEffect(() => {
@@ -247,6 +268,18 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
     return () => clearInterval(interval);
   }, [isActive, isFinished, startTime]);
 
+  // Auto-scroll text display as user types
+  useEffect(() => {
+    if (textDisplayRef.current && isActive) {
+      const charsPerLine = 50;
+      const lineHeight = 36; // Approximate line height in pixels
+      const currentLine = Math.floor(currentIndex / charsPerLine);
+      const scrollPosition = Math.max(0, (currentLine - 1) * lineHeight);
+      
+      textDisplayRef.current.scrollTop = scrollPosition;
+    }
+  }, [currentIndex, isActive]);
+
   const handleInputChange = (e) => {
     const value = e.target.value;
     
@@ -307,14 +340,7 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
     setIsFinished(true);
     setIsActive(false);
 
-    // Only save result to database if user is logged in
-    if (!user) {
-      console.log('User not logged in, skipping save');
-      setResultSaved(false);
-      return;
-    }
-
-    // Save result to database
+    // Save result to localStorage
     try {
       // Calculate consistency
       const consistency = wpmHistory.length > 0 
@@ -322,11 +348,12 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
         : 0;
 
       const resultData = {
-        user_id: user.id,
+        id: Date.now(), // Use timestamp as unique ID
+        timestamp: new Date().toISOString(),
         duration_seconds: duration,
         time_remaining: timeLeft,
         language: language,
-        snippet_language: language, // Same as language for now
+        snippet_language: language,
         wpm: wpm,
         raw_wpm: rawWpm,
         accuracy: accuracy,
@@ -334,7 +361,6 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
         errors: errors,
         correct_chars: correctChars,
         incorrect_chars: incorrectChars,
-        // chars_total is auto-generated, don't include it
         wpm_history: wpmHistory,
         device_meta: {
           userAgent: navigator.userAgent,
@@ -343,20 +369,22 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
         },
       };
 
-      const { data, error } = await supabase
-        .from('typing_results')
-        .insert([resultData])
-        .select();
-
-      if (error) {
-        console.error('Error saving result:', error);
-        setResultSaved(false);
-      } else {
-        console.log('Result saved successfully:', data);
-        setResultSaved(true);
-      }
+      // Get existing results from localStorage
+      const existingResults = JSON.parse(localStorage.getItem('typingResults') || '[]');
+      
+      // Add new result to the beginning of the array
+      existingResults.unshift(resultData);
+      
+      // Keep only the last 100 results to avoid localStorage size limits
+      const limitedResults = existingResults.slice(0, 100);
+      
+      // Save back to localStorage
+      localStorage.setItem('typingResults', JSON.stringify(limitedResults));
+      
+      console.log('Result saved to localStorage:', resultData);
+      setResultSaved(true);
     } catch (err) {
-      console.error('Unexpected error saving result:', err);
+      console.error('Error saving result to localStorage:', err);
       setResultSaved(false);
     }
   };
@@ -402,8 +430,9 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
       }}
     >
       {/* Terminal Header Bar */}
+      {!isActive && (
       <div 
-        className="px-4 py-2 flex items-center gap-2"
+        className="px-4 py-2 flex items-center gap-2 transition-all duration-300"
         style={{ 
           backgroundColor: theme.bgSecondary,
           borderBottom: `1px solid ${theme.border}`
@@ -418,10 +447,12 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
           spidertype@terminal:~$
         </span>
       </div>
+      )}
 
       {/* Top Navigation */}
+      {!isActive && (
       <nav 
-        className="px-8 py-4"
+        className="px-8 py-4 transition-all duration-300"
         style={{ borderBottom: `1px solid ${theme.border}` }}
       >
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -530,12 +561,21 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
           </div>
         </div>
       </nav>
+      )}
 
       {/* Main Typing Area */}
       <div className="flex-1 flex items-center justify-center px-8 py-12">
         <div className="max-w-4xl w-full">
-          {/* Stats */}
-          <div className="flex items-center justify-center gap-8 mb-8 text-sm">
+          {/* Stats - Show minimal stats in focus mode */}
+          {isActive && !isFinished ? (
+            <div className="flex items-center justify-center gap-8 mb-8 text-sm animate-fadeIn">
+              <div style={{ color: theme.textSecondary }}>
+                <span className="text-3xl font-bold">{timeLeft}s</span>
+                <span className="ml-2" style={{ color: theme.textMuted }}>remaining</span>
+              </div>
+            </div>
+          ) : (
+          <div className="flex items-center justify-center gap-8 mb-8 text-sm transition-all duration-300">
             <div style={{ color: theme.accent }}>
               <span className="text-2xl font-bold">{wpm}</span>
               <span className="ml-2" style={{ color: theme.textMuted }}>wpm</span>
@@ -573,6 +613,7 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
               </select>
             </div>
           </div>
+          )}
 
           {/* Text Display */}
           <div 
@@ -592,12 +633,61 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
             </div>
 
             {!isFinished ? (
-              <div className="text-xl leading-relaxed font-mono whitespace-pre-wrap">
-                {text.split('').map((char, index) => (
-                  <span key={index} style={getCharStyle(index)}>
-                    {char}
-                  </span>
-                ))}
+              <div 
+                ref={textDisplayRef}
+                className="text-xl leading-relaxed font-mono overflow-y-auto relative scrollbar-thin"
+                style={{ 
+                  maxHeight: '180px',
+                  transition: 'all 0.3s ease',
+                  scrollBehavior: 'smooth',
+                  wordWrap: 'break-word',
+                  whiteSpace: 'pre-wrap',
+                  overflowWrap: 'break-word'
+                }}
+              >
+                {text.split('').map((char, index) => {
+                  // Calculate visible lines based on actual character position
+                  // For word mode, use character count; for code mode, count actual newlines
+                  const isWordMode = language === 'words';
+                  let currentLine, charLine;
+                  
+                  if (isWordMode) {
+                    // For words, estimate based on characters (will wrap naturally)
+                    const charsPerLine = 50;
+                    currentLine = Math.floor(currentIndex / charsPerLine);
+                    charLine = Math.floor(index / charsPerLine);
+                  } else {
+                    // For code, count actual newlines
+                    currentLine = text.substring(0, currentIndex).split('\n').length - 1;
+                    charLine = text.substring(0, index).split('\n').length - 1;
+                  }
+                  
+                  const visibleLines = 3;
+                  const lineDiff = charLine - currentLine;
+                  
+                  // Determine opacity based on line position
+                  let opacity = 1;
+                  if (lineDiff > visibleLines) {
+                    opacity = 0; // Future lines hidden
+                  } else if (lineDiff === visibleLines) {
+                    opacity = 0.3; // Next line fading in
+                  } else if (lineDiff < 0) {
+                    opacity = 0.2; // Past lines faded
+                  }
+                  
+                  return (
+                    <span 
+                      key={index} 
+                      style={{
+                        ...getCharStyle(index),
+                        opacity: opacity,
+                        transition: 'opacity 0.5s ease'
+                      }}
+                    >
+                      {char}
+                    </span>
+                  );
+                })}
               </div>
             ) : (
               <div className="py-8">
@@ -811,7 +901,7 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
 
                 {/* Save status message */}
                 <div className="text-center mt-6">
-                  {user && resultSaved && (
+                  {resultSaved && (
                     <div 
                       className="inline-block px-4 py-2 rounded-lg"
                       style={{ 
@@ -820,11 +910,11 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
                       }}
                     >
                       <p className="text-sm font-medium" style={{ color: theme.correct }}>
-                        ✓ Result saved successfully
+                        ✓ Result saved to local storage
                       </p>
                     </div>
                   )}
-                  {!user && (
+                  {!resultSaved && isFinished && (
                     <div 
                       className="inline-block px-6 py-3 rounded-lg"
                       style={{ 
@@ -832,11 +922,8 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
                         border: `1px solid ${theme.incorrect}`
                       }}
                     >
-                      <p className="text-sm font-medium mb-1" style={{ color: theme.incorrect }}>
-                        ⚠️ Data not saved
-                      </p>
-                      <p className="text-xs" style={{ color: theme.textMuted }}>
-                        Please login to save your results and track your progress
+                      <p className="text-sm font-medium" style={{ color: theme.incorrect }}>
+                        ⚠️ Failed to save result
                       </p>
                     </div>
                   )}
@@ -856,31 +943,70 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
                 backgroundColor: theme.bg,
                 color: theme.text,
                 border: `1px solid ${theme.border}`,
-                minHeight: '100px'
+                minHeight: '100px',
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word'
               }}
               placeholder="Start typing to begin..."
               autoFocus
               onKeyDown={(e) => {
-                // Prevent form submission on Enter
+                // Handle Enter key - auto-indent like in IDEs
                 if (e.key === 'Enter') {
-                  e.stopPropagation();
+                  e.preventDefault();
+                  const currentChar = text[currentIndex];
+                  
+                  if (currentChar === '\n') {
+                    // Find the indentation of the current line in the original text
+                    let indentToAdd = '';
+                    
+                    // Look ahead in the text to find the indentation after this newline
+                    let nextIndex = currentIndex + 1;
+                    while (nextIndex < text.length && (text[nextIndex] === ' ' || text[nextIndex] === '\t')) {
+                      indentToAdd += text[nextIndex];
+                      nextIndex++;
+                    }
+                    
+                    // Add newline + auto-indentation
+                    const newValue = userInput + '\n' + indentToAdd;
+                    setUserInput(newValue);
+                    userInputRef.current = newValue;
+                    setCurrentIndex(newValue.length);
+                  }
+                  // If not a newline in the text, ignore the Enter key
                 }
               }}
             />
           )}
 
-          {/* Reset Button */}
-          <div className="text-center mt-6">
+          {/* Reset Button - Always visible at bottom */}
+          {!isFinished && (
+          <div className="text-center mt-6 transition-all duration-300">
             <button
               onClick={resetTest}
-              className="text-sm transition"
-              style={{ color: theme.textMuted }}
-              onMouseEnter={(e) => e.target.style.color = theme.textSecondary}
-              onMouseLeave={(e) => e.target.style.color = theme.textMuted}
+              className="px-6 py-3 rounded-lg font-medium transition-all duration-200"
+              style={{
+                backgroundColor: theme.buttonBg,
+                color: theme.textSecondary,
+                border: `2px solid ${theme.border}`
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = theme.buttonHover;
+                e.target.style.borderColor = theme.accent;
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = `0 4px 12px ${theme.accent}30`;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = theme.buttonBg;
+                e.target.style.borderColor = theme.border;
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }}
             >
-              Press Tab + Enter to restart
+              🔄 Reset Test
             </button>
           </div>
+          )}
         </div>
       </div>
     </div>

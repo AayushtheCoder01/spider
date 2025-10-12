@@ -40,28 +40,27 @@ export default function Dashboard({ user }) {
         return;
       }
 
-      // Fetch today's tests
+      // Fetch tests from localStorage
+      const allTests = JSON.parse(localStorage.getItem('typingResults') || '[]');
+      
+      // Filter today's tests
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       
-      const { data: todayTests } = await supabase
-        .from('typing_results')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', todayStart.toISOString())
-        .order('created_at', { ascending: false });
+      const todayTests = allTests.filter(test => {
+        const testDate = new Date(test.timestamp);
+        return testDate >= todayStart;
+      });
 
-      // Fetch this week's tests
+      // Filter this week's tests
       const weekStart = new Date();
       weekStart.setDate(weekStart.getDate() - 7);
       weekStart.setHours(0, 0, 0, 0);
 
-      const { data: weekTests } = await supabase
-        .from('typing_results')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', weekStart.toISOString())
-        .order('created_at', { ascending: false });
+      const weekTests = allTests.filter(test => {
+        const testDate = new Date(test.timestamp);
+        return testDate >= weekStart;
+      });
 
       // Calculate today's stats
       if (todayTests && todayTests.length > 0) {
@@ -585,19 +584,19 @@ export default function Dashboard({ user }) {
                             {test.language}
                           </div>
                           <div className="text-xs" style={{ color: theme.textMuted }}>
-                            {test.duration}s
+                            {test.duration_seconds}s
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm" style={{ color: theme.textSecondary }}>
-                          {new Date(test.created_at).toLocaleTimeString('en-US', {
+                          {new Date(test.timestamp).toLocaleTimeString('en-US', {
                             hour: '2-digit',
                             minute: '2-digit'
                           })}
                         </div>
                         <div className="text-xs" style={{ color: theme.textMuted }}>
-                          {new Date(test.created_at).toLocaleDateString('en-US', {
+                          {new Date(test.timestamp).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric'
                           })}

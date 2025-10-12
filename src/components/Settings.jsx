@@ -72,20 +72,20 @@ export default function Settings({ user }) {
           setIsPremium(userIsPremium);
         }
 
-        // Fetch test history
-        const { data, error, count } = await supabase
-          .from('typing_results')
-          .select('*', { count: 'exact' })
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .range(0, ITEMS_PER_PAGE - 1);
-
-        if (error) {
-          console.error('Error fetching history:', error);
-        } else {
-          setTestHistory(data || []);
-          setHasMore((data?.length || 0) === ITEMS_PER_PAGE);
-        }
+        // Fetch test history from localStorage
+        const allTests = JSON.parse(localStorage.getItem('typingResults') || '[]');
+        
+        // Get first page of results
+        const paginatedTests = allTests.slice(0, ITEMS_PER_PAGE);
+        
+        // Add created_at field for compatibility
+        const testsWithCreatedAt = paginatedTests.map(test => ({
+          ...test,
+          created_at: test.timestamp
+        }));
+        
+        setTestHistory(testsWithCreatedAt);
+        setHasMore(allTests.length > ITEMS_PER_PAGE);
       } catch (err) {
         console.error('Unexpected error:', err);
       } finally {
@@ -103,23 +103,22 @@ export default function Settings({ user }) {
     setLoadingMore(true);
     const nextPage = page + 1;
     const start = nextPage * ITEMS_PER_PAGE;
-    const end = start + ITEMS_PER_PAGE - 1;
+    const end = start + ITEMS_PER_PAGE;
 
     try {
-      const { data, error } = await supabase
-        .from('typing_results')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .range(start, end);
-
-      if (error) {
-        console.error('Error loading more:', error);
-      } else {
-        setTestHistory(prev => [...prev, ...(data || [])]);
-        setHasMore((data?.length || 0) === ITEMS_PER_PAGE);
-        setPage(nextPage);
-      }
+      // Fetch from localStorage
+      const allTests = JSON.parse(localStorage.getItem('typingResults') || '[]');
+      const paginatedTests = allTests.slice(start, end);
+      
+      // Add created_at field for compatibility
+      const testsWithCreatedAt = paginatedTests.map(test => ({
+        ...test,
+        created_at: test.timestamp
+      }));
+      
+      setTestHistory(prev => [...prev, ...testsWithCreatedAt]);
+      setHasMore(allTests.length > end);
+      setPage(nextPage);
     } catch (err) {
       console.error('Unexpected error:', err);
     } finally {

@@ -66,19 +66,16 @@ export default function TestDetail({ user }) {
           setIsPremium(userIsPremium);
         }
 
-        // Fetch test data
-        const { data, error } = await supabase
-          .from('typing_results')
-          .select('*')
-          .eq('id', testId)
-          .eq('user_id', user.id)
-          .single();
+        // Fetch test data from localStorage
+        const allTests = JSON.parse(localStorage.getItem('typingResults') || '[]');
+        const test = allTests.find(t => t.id === parseInt(testId));
 
-        if (error) {
-          console.error('Error fetching test:', error);
+        if (!test) {
+          console.error('Test not found in localStorage');
           navigate('/settings');
         } else {
-          setTestData(data);
+          // Add created_at field for compatibility with existing code
+          setTestData({ ...test, created_at: test.timestamp });
         }
       } catch (err) {
         console.error('Unexpected error:', err);
@@ -407,7 +404,7 @@ export default function TestDetail({ user }) {
                 <div className="flex justify-between">
                   <span style={{ color: theme.textMuted }}>Date:</span>
                   <span className="font-medium" style={{ color: theme.text }}>
-                    {new Date(testData.created_at).toLocaleDateString('en-US', {
+                    {new Date(testData.timestamp).toLocaleDateString('en-US', {
                       month: 'long',
                       day: 'numeric',
                       year: 'numeric'
@@ -417,7 +414,7 @@ export default function TestDetail({ user }) {
                 <div className="flex justify-between">
                   <span style={{ color: theme.textMuted }}>Time:</span>
                   <span className="font-medium" style={{ color: theme.text }}>
-                    {new Date(testData.created_at).toLocaleTimeString('en-US', {
+                    {new Date(testData.timestamp).toLocaleTimeString('en-US', {
                       hour: '2-digit',
                       minute: '2-digit',
                       second: '2-digit'
