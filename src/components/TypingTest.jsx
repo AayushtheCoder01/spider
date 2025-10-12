@@ -3,13 +3,49 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../supabase-client';
 
-const WORD_LIST = [
-  // Very common simple words
+// Small words (2-3 letters) - will be selected more frequently
+const SMALL_WORDS = [
+  // 2-letter words
+  'am', 'an', 'as', 'at', 'be', 'by', 'do', 'go', 'he', 'hi', 'if', 'in', 'is', 'it', 'me', 'my',
+  'no', 'of', 'on', 'or', 'so', 'to', 'up', 'us', 'we', 'ox', 'ad', 'ah', 'aw', 'ax', 'ay', 'eh',
+  'ex', 'id', 'oh', 'ow', 'uh', 'um', 'yo', 'ma', 'pa', 'la', 'fa', 're', 'mi', 'ti', 'si', 'do',
+  // 3-letter words
   'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one', 'our', 'out',
   'day', 'get', 'has', 'him', 'his', 'how', 'man', 'new', 'now', 'old', 'see', 'two', 'way', 'who',
   'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use', 'may', 'any', 'had', 'her', 'him',
-  'if', 'so', 'an', 'as', 'at', 'be', 'by', 'he', 'in', 'is', 'it', 'me', 'my', 'no', 'of', 'on',
-  'or', 'to', 'up', 'us', 'we', 'do', 'go', 'am', 'an', 'as', 'at', 'be', 'by', 'he', 'in', 'is',
+  'add', 'age', 'ago', 'air', 'arm', 'art', 'ask', 'bad', 'bag', 'bar', 'bat', 'bed', 'bet', 'big',
+  'bit', 'box', 'bug', 'bus', 'buy', 'car', 'cat', 'cup', 'cut', 'dad', 'dog', 'dot', 'dry', 'due',
+  'ear', 'eat', 'egg', 'end', 'eye', 'far', 'fat', 'few', 'fit', 'fix', 'fly', 'fun', 'gap', 'gas',
+  'god', 'got', 'gun', 'guy', 'hat', 'hit', 'hot', 'ice', 'ill', 'job', 'joy', 'key', 'kid', 'kit',
+  'law', 'lay', 'leg', 'lie', 'lip', 'log', 'lot', 'low', 'mad', 'map', 'mat', 'mix', 'mom', 'mud',
+  'net', 'nor', 'nut', 'odd', 'off', 'oil', 'own', 'pan', 'pay', 'pen', 'pet', 'pie', 'pig', 'pin',
+  'pit', 'pop', 'pot', 'pub', 'ran', 'rat', 'raw', 'red', 'rid', 'row', 'rub', 'run', 'sad', 'sat',
+  'sea', 'set', 'sex', 'she', 'shy', 'sin', 'sir', 'sit', 'six', 'sky', 'son', 'sun', 'tax', 'tea',
+  'ten', 'the', 'tie', 'tip', 'top', 'toy', 'try', 'tub', 'van', 'war', 'was', 'wax', 'web', 'wet',
+  'win', 'wit', 'yes', 'yet', 'you', 'zip', 'zoo', 'act', 'aim', 'ban', 'bin', 'bow', 'cry', 'den',
+  'dim', 'dip', 'era', 'fed', 'fee', 'fin', 'fog', 'fox', 'fur', 'gym', 'hen', 'hug', 'ink', 'jam',
+  'jet', 'lab', 'lap', 'led', 'lid', 'lit', 'max', 'nod', 'oak', 'oar', 'opt', 'orb', 'ore', 'owe',
+  'pad', 'pal', 'paw', 'pea', 'peg', 'per', 'pod', 'pro', 'pry', 'pub', 'rag', 'ram', 'rap', 'ray',
+  'rib', 'rim', 'rip', 'rob', 'rod', 'rot', 'sag', 'saw', 'sew', 'sip', 'ski', 'sly', 'sob', 'soy',
+  'spy', 'sum', 'tab', 'tag', 'tan', 'tap', 'tar', 'tow', 'tug', 'urn', 'vet', 'via', 'vow', 'wed',
+  'wig', 'won', 'wow', 'yak', 'yam', 'yen', 'zap', 'zen', 'cod', 'cog', 'cop', 'cow', 'cub', 'cue',
+];
+
+const WORD_LIST = [
+  
+  // Easy-to-type longer words (smooth flow)
+  'success', 'process', 'access', 'address', 'assess', 'possess', 'express', 'impress', 'suppress',
+  'message', 'passage', 'village', 'package', 'manage', 'damage', 'image', 'storage', 'average',
+  'people', 'simple', 'example', 'sample', 'temple', 'purple', 'apple', 'ripple', 'couple',
+  'follow', 'yellow', 'hollow', 'borrow', 'sorrow', 'narrow', 'arrow', 'tomorrow', 'window',
+  'letter', 'better', 'matter', 'pattern', 'scatter', 'shatter', 'flutter', 'butter', 'utter',
+  'little', 'middle', 'fiddle', 'riddle', 'paddle', 'saddle', 'battle', 'cattle', 'settle',
+  'coffee', 'toffee', 'office', 'offer', 'suffer', 'buffer', 'differ', 'effect', 'affect',
+  'summer', 'hammer', 'manner', 'banner', 'dinner', 'winner', 'runner', 'inner', 'spinner',
+  'common', 'lemon', 'demon', 'melon', 'wagon', 'dragon', 'season', 'reason', 'person', 'lesson',
+  'happen', 'open', 'broken', 'spoken', 'token', 'frozen', 'chosen', 'golden', 'sudden', 'hidden',
+  'pepper', 'copper', 'proper', 'paper', 'super', 'upper', 'supper', 'zipper', 'slipper', 'flipper',
+  'asses', 'passes', 'classes', 'glasses', 'masses', 'grasses', 'resses', 'presses', 'stresses',
   
   // Common action words
   'tell', 'make', 'know', 'take', 'come', 'give', 'look', 'want', 'find', 'call', 'feel', 'try',
@@ -49,13 +85,126 @@ const WORD_LIST = [
   'innovation', 'revolution', 'evolution', 'transformation', 'progress', 'achievement', 'excellence',
 ];
 
+// Most satisfying typing patterns based on ergonomics and flow
+// Research shows these patterns create the best typing experience:
+// 1. Alternating hands (left-right-left-right)
+// 2. Home row keys (asdf jkl;)
+// 3. Rolling fingers (inward/outward rolls)
+// 4. Double letters (smooth repetition)
+// 5. Common digraphs (th, er, in, on, an)
+
+const SATISFYING_WORDS = [
+  // Perfect alternating hands (most satisfying)
+  'when', 'then', 'than', 'them', 'their', 'theory', 'turkey', 'visual', 'formal', 'social',
+  'island', 'problem', 'element', 'ancient', 'penalty', 'ritual', 'authentic', 'chairman',
+  
+  // Home row dominant (comfortable, fast)
+  'sad', 'lad', 'had', 'fad', 'dad', 'gal', 'lass', 'glass', 'flask', 'salad', 'falls',
+  'shall', 'flash', 'slash', 'dash', 'hash', 'sash', 'lash', 'gash', 'ash',
+  
+  // Rolling fingers outward (satisfying flow)
+  'was', 'saw', 'were', 'where', 'water', 'waste', 'wasted', 'answer', 'tower', 'power',
+  'lower', 'flower', 'shower', 'browser', 'drawer',
+  
+  // Rolling fingers inward (smooth motion)
+  'pop', 'top', 'mop', 'cop', 'hop', 'stop', 'drop', 'prop', 'shop', 'chop',
+  'ion', 'lion', 'onion', 'opinion', 'union', 'million', 'billion',
+  
+  // Double letters (rhythmic satisfaction)
+  'book', 'look', 'took', 'cook', 'hook', 'good', 'food', 'mood', 'wood', 'pool',
+  'cool', 'tool', 'fool', 'loop', 'door', 'poor', 'floor', 'proof', 'room', 'boom',
+  'zoom', 'moon', 'soon', 'noon', 'spoon', 'balloon', 'cartoon',
+  'bell', 'tell', 'sell', 'well', 'spell', 'shell', 'smell', 'dwell', 'swell',
+  'ball', 'call', 'fall', 'hall', 'mall', 'tall', 'wall', 'small', 'install',
+  'will', 'fill', 'kill', 'mill', 'pill', 'still', 'skill', 'drill', 'thrill',
+  'pass', 'mass', 'class', 'grass', 'glass', 'brass',
+  'less', 'mess', 'dress', 'press', 'stress', 'bless', 'chess', 'guess', 'access',
+  'miss', 'kiss', 'bliss', 'dismiss',
+  'boss', 'loss', 'moss', 'cross', 'gross', 'across',
+  'buff', 'puff', 'stuff', 'bluff', 'fluff', 'muffin', 'buffer', 'suffer',
+  'buzz', 'fuzz', 'fuzzy', 'puzzle',
+  
+  // Common digraphs (natural flow)
+  'the', 'this', 'that', 'they', 'them', 'then', 'there', 'these', 'those', 'think',
+  'thing', 'thank', 'three', 'through', 'throw', 'thread', 'threat', 'throne',
+  'her', 'here', 'hero', 'herd', 'term', 'fern', 'stern', 'modern', 'pattern',
+  'in', 'into', 'inner', 'input', 'inside', 'instant', 'install', 'inspire',
+  'on', 'one', 'once', 'only', 'onto', 'online', 'ongoing',
+  'an', 'and', 'any', 'many', 'can', 'man', 'pan', 'plan', 'than', 'scan',
+];
+
+// Sentence patterns for natural flow
+const SENTENCE_PATTERNS = [
+  // Alternating hand patterns (most satisfying)
+  ['when', 'they', 'go', 'to', 'the', 'island'],
+  ['the', 'theory', 'is', 'formal', 'and', 'visual'],
+  ['their', 'problem', 'is', 'authentic'],
+  ['the', 'chairman', 'got', 'the', 'penalty'],
+  
+  // Home row dominant (fast and comfortable)
+  ['sad', 'lad', 'had', 'a', 'glass', 'flask'],
+  ['the', 'flash', 'and', 'dash', 'falls'],
+  ['shall', 'we', 'slash', 'the', 'hash'],
+  
+  // Rolling patterns (smooth flow)
+  ['where', 'was', 'the', 'water', 'tower'],
+  ['the', 'flower', 'has', 'power'],
+  ['answer', 'the', 'lower', 'drawer'],
+  ['pop', 'to', 'the', 'top', 'shop'],
+  
+  // Double letter satisfaction
+  ['look', 'at', 'the', 'good', 'book'],
+  ['the', 'cool', 'pool', 'and', 'tool'],
+  ['soon', 'the', 'moon', 'will', 'bloom'],
+  ['tell', 'me', 'the', 'spell', 'well'],
+  ['the', 'small', 'ball', 'will', 'fall'],
+  ['pass', 'the', 'class', 'with', 'skill'],
+  ['less', 'stress', 'and', 'more', 'success'],
+  ['the', 'boss', 'will', 'cross', 'the', 'hall'],
+  
+  // Common digraph flow
+  ['they', 'think', 'this', 'is', 'good'],
+  ['thank', 'them', 'for', 'the', 'help'],
+  ['here', 'is', 'the', 'modern', 'pattern'],
+  ['into', 'the', 'inner', 'room'],
+  ['once', 'and', 'only', 'once'],
+  ['many', 'can', 'plan', 'and', 'scan'],
+  
+  // Mixed satisfaction patterns
+  ['the', 'book', 'was', 'cool'],
+  ['look', 'where', 'they', 'go'],
+  ['when', 'will', 'the', 'moon', 'rise'],
+  ['pass', 'them', 'the', 'tool'],
+  ['think', 'less', 'and', 'do', 'more'],
+];
+
 const generateWordSentence = (wordCount = 50) => {
   const words = [];
-  for (let i = 0; i < wordCount; i++) {
-    words.push(WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)]);
+  
+  while (words.length < wordCount) {
+    const rand = Math.random();
+    
+    // 50% chance to use satisfying sentence patterns
+    if (rand < 0.5 && words.length + 6 <= wordCount) {
+      const pattern = SENTENCE_PATTERNS[Math.floor(Math.random() * SENTENCE_PATTERNS.length)];
+      words.push(...pattern);
+    }
+    // 30% chance to use highly satisfying words
+    else if (rand < 0.8) {
+      words.push(SATISFYING_WORDS[Math.floor(Math.random() * SATISFYING_WORDS.length)]);
+    }
+    // 15% chance for small words (quick and easy)
+    else if (rand < 0.95) {
+      words.push(SMALL_WORDS[Math.floor(Math.random() * SMALL_WORDS.length)]);
+    }
+    // 5% chance for variety from main list
+    else {
+      words.push(WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)]);
+    }
   }
-  // Join with spaces - natural word wrapping will handle line breaks
-  return words.join(' ');
+  
+  // Trim to exact word count
+  return words.slice(0, wordCount).join(' ');
 };
 
 const CODE_SNIPPETS = {
@@ -415,7 +564,12 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
       return { color: userInput[index] === text[index] ? theme.correct : theme.incorrect };
     }
     if (index === currentIndex) {
-      return { borderLeft: `2px solid ${theme.accent}` };
+      return { 
+        borderLeft: `3px solid ${theme.accent}`,
+        paddingLeft: '2px',
+        marginLeft: '-2px',
+        transition: 'all 0.05s ease-out'
+      };
     }
     return { color: theme.textMuted };
   };
@@ -432,20 +586,30 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
       {/* Terminal Header Bar */}
       {!isActive && (
       <div 
-        className="px-4 py-2 flex items-center gap-2 transition-all duration-300"
+        className="px-4 py-2 flex items-center justify-between transition-all duration-300"
         style={{ 
           backgroundColor: theme.bgSecondary,
           borderBottom: `1px solid ${theme.border}`
         }}
       >
-        <div className="flex gap-2">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ff5f56' }}></div>
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ffbd2e' }}></div>
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#27c93f' }}></div>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ff5f56' }}></div>
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ffbd2e' }}></div>
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#27c93f' }}></div>
+          </div>
+          <span className="text-xs font-mono" style={{ color: theme.accent }}>
+            spidertype@terminal
+          </span>
+          <span className="text-xs" style={{ color: theme.textMuted }}>:</span>
+          <span className="text-xs font-mono" style={{ color: theme.correct }}>~</span>
+          <span className="text-xs" style={{ color: theme.textMuted }}>$</span>
         </div>
-        <span className="text-xs ml-2" style={{ color: theme.textMuted }}>
-          spidertype@terminal:~$
-        </span>
+        <div className="flex items-center gap-4 text-xs" style={{ color: theme.textMuted }}>
+          <span className="font-mono">bash</span>
+          <span>•</span>
+          <span className="font-mono">{new Date().toLocaleTimeString('en-US', { hour12: false })}</span>
+        </div>
       </div>
       )}
 
@@ -460,35 +624,49 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/settings')}
-              className="px-4 py-2 rounded-lg text-sm transition"
+              className="px-4 py-2 rounded text-sm transition font-mono"
               style={{
-                backgroundColor: theme.buttonBg,
-                color: theme.textSecondary
+                backgroundColor: theme.bgSecondary,
+                color: theme.textSecondary,
+                border: `1px solid ${theme.border}`
               }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = theme.buttonHover}
-              onMouseLeave={(e) => e.target.style.backgroundColor = theme.buttonBg}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = theme.buttonHover;
+                e.target.style.borderColor = theme.accent;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = theme.bgSecondary;
+                e.target.style.borderColor = theme.border;
+              }}
             >
-              ⚙️ Settings
+              $ settings
             </button>
             {isPremium && (
               <button
                 onClick={() => navigate('/dashboard')}
-                className="px-4 py-2 rounded-lg text-sm transition"
+                className="px-4 py-2 rounded text-sm transition font-mono"
                 style={{
-                  backgroundColor: theme.buttonBg,
-                  color: theme.textSecondary
+                  backgroundColor: theme.bgSecondary,
+                  color: theme.textSecondary,
+                  border: `1px solid ${theme.border}`
                 }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = theme.buttonHover}
-                onMouseLeave={(e) => e.target.style.backgroundColor = theme.buttonBg}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = theme.buttonHover;
+                  e.target.style.borderColor = theme.accent;
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = theme.bgSecondary;
+                  e.target.style.borderColor = theme.border;
+                }}
               >
-                📊 Dashboard
+                $ dashboard
               </button>
             )}
           </div>
 
           {/* Duration Selection - Center */}
           <div className="flex items-center gap-3 text-sm">
-            <span className="mr-2" style={{ color: theme.textMuted }}>⏱</span>
+            <span className="mr-2 font-mono" style={{ color: theme.textMuted }}>--time</span>
             {[15, 30, 60, 120].map(time => (
               <button
                 key={time}
@@ -496,14 +674,22 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
                   setDuration(time);
                   setTimeLeft(time);
                 }}
-                className="transition"
+                className="transition font-mono px-2 py-1 rounded"
                 style={{ 
-                  color: duration === time ? theme.accent : theme.textMuted 
+                  color: duration === time ? theme.accent : theme.textMuted,
+                  backgroundColor: duration === time ? theme.accent + '20' : 'transparent',
+                  border: duration === time ? `1px solid ${theme.accent}` : '1px solid transparent'
                 }}
-                onMouseEnter={(e) => e.target.style.color = theme.text}
-                onMouseLeave={(e) => e.target.style.color = duration === time ? theme.accent : theme.textMuted}
+                onMouseEnter={(e) => {
+                  e.target.style.color = theme.text;
+                  if (duration !== time) e.target.style.borderColor = theme.border;
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.color = duration === time ? theme.accent : theme.textMuted;
+                  if (duration !== time) e.target.style.borderColor = 'transparent';
+                }}
               >
-                {time}
+                {time}s
               </button>
             ))}
           </div>
@@ -617,7 +803,7 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
 
           {/* Text Display */}
           <div 
-            className="rounded-lg p-8 mb-6 min-h-[200px] relative"
+            className="rounded-lg p-8 mb-6 min-h-[280px] relative"
             style={{ 
               backgroundColor: theme.bgSecondary,
               border: `1px solid ${theme.border}`,
@@ -626,18 +812,21 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
           >
             {/* Terminal Prompt */}
             <div className="flex items-center gap-2 mb-4 pb-2" style={{ borderBottom: `1px solid ${theme.border}` }}>
-              <span style={{ color: theme.accent }}>❯</span>
-              <span className="text-sm" style={{ color: theme.textMuted }}>
-                {language === 'words' ? 'typing practice' : `${language} snippet`}
+              <span className="font-mono" style={{ color: theme.accent }}>user@spidertype</span>
+              <span style={{ color: theme.textMuted }}>:</span>
+              <span className="font-mono" style={{ color: theme.correct }}>~</span>
+              <span style={{ color: theme.textMuted }}>$</span>
+              <span className="text-sm font-mono ml-2" style={{ color: theme.text }}>
+                {language === 'words' ? 'cat typing_practice.txt' : `cat ${language}_snippet.${language === 'python' ? 'py' : language === 'javascript' || language === 'react' ? 'js' : language === 'typescript' ? 'ts' : language === 'java' ? 'java' : language === 'cpp' ? 'cpp' : language === 'go' ? 'go' : language === 'rust' ? 'rs' : 'txt'}`}
               </span>
             </div>
 
             {!isFinished ? (
               <div 
                 ref={textDisplayRef}
-                className="text-xl leading-relaxed font-mono overflow-y-auto relative scrollbar-thin"
+                className="text-2xl leading-relaxed font-mono overflow-y-auto relative scrollbar-thin"
                 style={{ 
-                  maxHeight: '180px',
+                  maxHeight: '260px',
                   transition: 'all 0.3s ease',
                   scrollBehavior: 'smooth',
                   wordWrap: 'break-word',
@@ -938,12 +1127,12 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
               ref={inputRef}
               value={userInput}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 rounded-lg font-mono focus:outline-none resize-none"
+              className="w-full px-4 py-3 rounded-lg font-mono focus:outline-none resize-none text-lg"
               style={{
                 backgroundColor: theme.bg,
                 color: theme.text,
                 border: `1px solid ${theme.border}`,
-                minHeight: '100px',
+                minHeight: '120px',
                 whiteSpace: 'pre-wrap',
                 wordWrap: 'break-word',
                 overflowWrap: 'break-word'

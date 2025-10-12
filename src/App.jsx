@@ -48,8 +48,16 @@ function App() {
 
   const handleLogout = async () => {
     try {
+      // Clear all test data from localStorage
+      localStorage.removeItem('typingResults');
+      localStorage.removeItem('typingDuration');
+      localStorage.removeItem('typingLanguage');
+      
+      // Sign out from Supabase
       await supabase.auth.signOut();
       setUser(null);
+      
+      console.log('Logged out and cleared all test data');
     } catch (error) {
       console.error('Logout error:', error);
     }
