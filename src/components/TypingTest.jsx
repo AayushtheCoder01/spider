@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../supabase-client';
@@ -339,6 +339,7 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
   const inputRef = useRef(null);
   const userInputRef = useRef('');
   const textDisplayRef = useRef(null);
+  const nextTestButtonRef = useRef(null);
 
   // Check premium status
   useEffect(() => {
@@ -361,7 +362,57 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
 
     checkPremium();
   }, [user]);
+  
   const testFinishedRef = useRef(false);
+
+  // Generate text function
+  const generateText = () => {
+    const snippets = CODE_SNIPPETS[language];
+    setText(snippets[Math.floor(Math.random() * snippets.length)]);
+  };
+
+  // Reset test function (defined early so it can be used in useEffect)
+  const resetTest = useCallback(() => {
+    setUserInput('');
+    userInputRef.current = '';
+    testFinishedRef.current = false; // Reset the finished flag
+    setCurrentIndex(0);
+    setStartTime(null);
+    setTimeLeft(duration);
+    setIsActive(false);
+    setIsFinished(false);
+    setWpm(0);
+    setAccuracy(100);
+    setErrors(0);
+    setWpmHistory([]);
+    setRawWpm(0);
+    setCorrectChars(0);
+    setIncorrectChars(0);
+    setResultSaved(false);
+    generateText();
+    inputRef.current?.focus();
+  }, [duration]);
+
+  // Keyboard shortcuts for results page
+  useEffect(() => {
+    if (isFinished) {
+      const handleKeyPress = (e) => {
+        // Tab key to focus the next test button
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          nextTestButtonRef.current?.focus();
+        }
+        // Enter key to start new test (works anywhere on results page)
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          resetTest();
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyPress);
+      return () => window.removeEventListener('keydown', handleKeyPress);
+    }
+  }, [isFinished, resetTest]);
 
   // Save duration to localStorage
   useEffect(() => {
@@ -377,11 +428,6 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
   useEffect(() => {
     generateText();
   }, [language]);
-
-  const generateText = () => {
-    const snippets = CODE_SNIPPETS[language];
-    setText(snippets[Math.floor(Math.random() * snippets.length)]);
-  };
 
   // Timer
   useEffect(() => {
@@ -536,27 +582,6 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
       console.error('Error saving result to localStorage:', err);
       setResultSaved(false);
     }
-  };
-
-  const resetTest = () => {
-    setUserInput('');
-    userInputRef.current = '';
-    testFinishedRef.current = false; // Reset the finished flag
-    setCurrentIndex(0);
-    setStartTime(null);
-    setTimeLeft(duration);
-    setIsActive(false);
-    setIsFinished(false);
-    setWpm(0);
-    setAccuracy(100);
-    setErrors(0);
-    setWpmHistory([]);
-    setRawWpm(0);
-    setCorrectChars(0);
-    setIncorrectChars(0);
-    setResultSaved(false);
-    generateText();
-    inputRef.current?.focus();
   };
 
   const getCharStyle = (index) => {
@@ -1059,7 +1084,7 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center justify-center gap-4">
+                <div className="flex items-center justify-center gap-4 mb-6">
                   <button
                     onClick={resetTest}
                     className="p-3 rounded-lg transition"
@@ -1088,8 +1113,40 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
                   </button>
                 </div>
 
+                {/* Large Next Test Button */}
+                <div className="flex justify-center">
+                  <button
+                    ref={nextTestButtonRef}
+                    onClick={resetTest}
+                    className="px-8 py-4 rounded-lg font-mono text-lg font-medium transition-all duration-200"
+                    style={{
+                      backgroundColor: theme.accent,
+                      color: theme.bg,
+                      border: `2px solid ${theme.accent}`,
+                      boxShadow: `0 4px 12px ${theme.accent}40`
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.transform = 'translateY(-2px)';
+                      e.target.style.boxShadow = `0 6px 16px ${theme.accent}60`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = `0 4px 12px ${theme.accent}40`;
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.outline = `2px solid ${theme.accent}`;
+                      e.target.style.outlineOffset = '4px';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.outline = 'none';
+                    }}
+                  >
+                    Press Tab + Enter or Click to Start New Test →
+                  </button>
+                </div>
+
                 {/* Save status message */}
-                <div className="text-center mt-6">
+                <div className="text-center mt-4">
                   {resultSaved && (
                     <div 
                       className="inline-block px-4 py-2 rounded-lg"

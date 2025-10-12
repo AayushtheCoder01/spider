@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../supabase-client';
@@ -11,6 +11,7 @@ export default function TestDetail({ user }) {
   const [testData, setTestData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
+  const newTestButtonRef = useRef(null);
 
   useEffect(() => {
     const fetchTestDetail = async () => {
@@ -87,6 +88,25 @@ export default function TestDetail({ user }) {
 
     fetchTestDetail();
   }, [testId, user, navigate]);
+
+  // Keyboard shortcuts for new test
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Tab key to focus the new test button
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        newTestButtonRef.current?.focus();
+      }
+      // Enter key to start new test
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        navigate('/');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [navigate]);
 
   if (loading) {
     return (
@@ -489,7 +509,7 @@ export default function TestDetail({ user }) {
 
           {/* Raw Data (JSON) */}
           <div 
-            className="p-6 rounded-lg"
+            className="p-6 rounded-lg mb-8"
             style={{ backgroundColor: theme.bgSecondary }}
           >
             <h2 className="text-xl font-semibold mb-4" style={{ color: theme.text }}>
@@ -504,6 +524,38 @@ export default function TestDetail({ user }) {
             >
               {JSON.stringify(testData, null, 2)}
             </pre>
+          </div>
+
+          {/* New Test Button */}
+          <div className="flex justify-center">
+            <button
+              ref={newTestButtonRef}
+              onClick={() => navigate('/')}
+              className="px-8 py-4 rounded-lg font-mono text-lg font-medium transition-all duration-200"
+              style={{
+                backgroundColor: theme.accent,
+                color: theme.bg,
+                border: `2px solid ${theme.accent}`,
+                boxShadow: `0 4px 12px ${theme.accent}40`
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = `0 6px 16px ${theme.accent}60`;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = `0 4px 12px ${theme.accent}40`;
+              }}
+              onFocus={(e) => {
+                e.target.style.outline = `2px solid ${theme.accent}`;
+                e.target.style.outlineOffset = '4px';
+              }}
+              onBlur={(e) => {
+                e.target.style.outline = 'none';
+              }}
+            >
+              Press Tab + Enter or Click to Start New Test →
+            </button>
           </div>
           </>
           )}
