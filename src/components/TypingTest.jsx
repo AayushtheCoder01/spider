@@ -4,14 +4,35 @@ import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../supabase-client';
 
 const WORD_LIST = [
-  'the', 'quick', 'brown', 'fox', 'jumps', 'over', 'lazy', 'dog', 'and', 'runs', 'through', 'forest',
-  'beautiful', 'morning', 'sunshine', 'brings', 'happiness', 'everyone', 'around', 'world', 'today',
+  // Very common simple words
+  'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one', 'our', 'out',
+  'day', 'get', 'has', 'him', 'his', 'how', 'man', 'new', 'now', 'old', 'see', 'two', 'way', 'who',
+  'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use', 'may', 'any', 'had', 'her', 'him',
+  'if', 'so', 'an', 'as', 'at', 'be', 'by', 'he', 'in', 'is', 'it', 'me', 'my', 'no', 'of', 'on',
+  'or', 'to', 'up', 'us', 'we', 'do', 'go', 'am', 'an', 'as', 'at', 'be', 'by', 'he', 'in', 'is',
+  
+  // Common action words
+  'tell', 'make', 'know', 'take', 'come', 'give', 'look', 'want', 'find', 'call', 'feel', 'try',
+  'ask', 'need', 'seem', 'help', 'talk', 'turn', 'show', 'hear', 'play', 'run', 'move', 'like',
+  'live', 'think', 'work', 'keep', 'start', 'grow', 'open', 'walk', 'begin', 'might', 'next',
+  
+  // Simple descriptive words
+  'good', 'new', 'first', 'last', 'long', 'great', 'little', 'own', 'other', 'old', 'right', 'big',
+  'high', 'small', 'large', 'next', 'early', 'young', 'few', 'public', 'bad', 'same', 'able',
+  
+  // Common nouns
+  'time', 'person', 'year', 'thing', 'man', 'world', 'life', 'hand', 'part', 'child', 'eye', 'woman',
+  'place', 'work', 'week', 'case', 'point', 'group', 'room', 'fact', 'money', 'water', 'day', 'area',
+  
+  // Original words for variety
+  'quick', 'brown', 'fox', 'jumps', 'over', 'lazy', 'dog', 'runs', 'through', 'forest',
+  'beautiful', 'morning', 'sunshine', 'brings', 'happiness', 'everyone', 'around', 'today',
   'technology', 'advances', 'rapidly', 'changing', 'lives', 'people', 'everywhere', 'making', 'easier',
   'learning', 'programming', 'requires', 'practice', 'patience', 'dedication', 'achieve', 'mastery',
   'typing', 'speed', 'accuracy', 'important', 'skills', 'develop', 'improve', 'productivity',
   'computer', 'keyboard', 'monitor', 'mouse', 'software', 'hardware', 'internet', 'network',
   'creative', 'thinking', 'problem', 'solving', 'critical', 'analysis', 'effective', 'communication',
-  'success', 'comes', 'hard', 'work', 'perseverance', 'never', 'giving', 'dreams', 'goals',
+  'success', 'comes', 'hard', 'perseverance', 'never', 'giving', 'dreams', 'goals',
 ];
 
 const generateWordSentence = (wordCount = 50) => {
