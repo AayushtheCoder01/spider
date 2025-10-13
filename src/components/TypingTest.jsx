@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../supabase-client';
+import { calculateXP, calculateLevel, getLevelTitle, getMotivationalMessage } from '../utils/xpSystem';
 
 // Small words (2-3 letters) - will be selected more frequently
 const SMALL_WORDS = [
@@ -336,28 +337,43 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
   const [incorrectChars, setIncorrectChars] = useState(0);
   const [resultSaved, setResultSaved] = useState(false);
   
+  // XP System states
+  const [userXP, setUserXP] = useState(0);
+  const [userLevel, setUserLevel] = useState(1);
+  const [xpEarned, setXpEarned] = useState(0);
+  const [xpBreakdown, setXpBreakdown] = useState(null);
+  const [showXpAnimation, setShowXpAnimation] = useState(false);
+  
   const inputRef = useRef(null);
   const userInputRef = useRef('');
   const textDisplayRef = useRef(null);
   const nextTestButtonRef = useRef(null);
 
-  // Check premium status
+  // Check premium status and load user XP
   useEffect(() => {
     const checkPremium = async () => {
       if (!user) {
         setIsPremium(false);
+        setUserXP(0);
+        setUserLevel(1);
         return;
       }
 
       const { data: profileData } = await supabase
         .from('user_profiles')
-        .select('tier, premium_until')
+        .select('tier, premium_until, xp')
         .eq('id', user.id)
         .single();
 
       const now = new Date();
       const isExpired = profileData?.premium_until && new Date(profileData.premium_until) < now;
       setIsPremium(profileData?.tier === 'premium' && !isExpired);
+      
+      // Load user XP and calculate level
+      const currentXP = profileData?.xp || 0;
+      setUserXP(currentXP);
+      const levelInfo = calculateLevel(currentXP);
+      setUserLevel(levelInfo.level);
     };
 
     checkPremium();
@@ -389,9 +405,16 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
     setCorrectChars(0);
     setIncorrectChars(0);
     setResultSaved(false);
-    generateText();
+    setXpEarned(0);
+    setXpBreakdown(null);
+    setShowXpAnimation(false);
+    
+    // Generate new text based on current language
+    const snippets = CODE_SNIPPETS[language];
+    setText(snippets[Math.floor(Math.random() * snippets.length)]);
+    
     inputRef.current?.focus();
-  }, [duration]);
+  }, [duration, language]);
 
   // Keyboard shortcuts for results page
   useEffect(() => {
@@ -564,6 +587,50 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
         },
       };
 
+      // Calculate XP earned
+      const xpData = calculateXP({
+        wpm: wpm,
+        accuracy: accuracy,
+        duration_seconds: duration,
+        consistency: consistency,
+        errors: errors
+      });
+      
+      setXpEarned(xpData.total);
+      setXpBreakdown(xpData);
+      
+      // Save XP to Supabase if user is logged in
+      if (user) {
+        try {
+          const newTotalXP = userXP + xpData.total;
+          
+          const { error: xpError } = await supabase
+            .from('user_profiles')
+            .update({ xp: newTotalXP })
+            .eq('id', user.id);
+          
+          if (xpError) {
+            console.error('Error saving XP to database:', xpError);
+          } else {
+            console.log('XP saved successfully! Earned:', xpData.total, 'Total:', newTotalXP);
+            setUserXP(newTotalXP);
+            const newLevelInfo = calculateLevel(newTotalXP);
+            
+            // Check if user leveled up
+            if (newLevelInfo.level > userLevel) {
+              console.log('🎉 Level up!', userLevel, '->', newLevelInfo.level);
+            }
+            setUserLevel(newLevelInfo.level);
+            
+            // Show XP animation
+            setShowXpAnimation(true);
+            setTimeout(() => setShowXpAnimation(false), 3000);
+          }
+        } catch (xpErr) {
+          console.error('Error updating XP:', xpErr);
+        }
+      }
+
       // Get existing results from localStorage
       const existingResults = JSON.parse(localStorage.getItem('typingResults') || '[]');
       
@@ -722,24 +789,52 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
           {/* Auth Buttons - Right */}
           <div className="flex items-center gap-3">
             {user ? (
-              <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg" style={{ backgroundColor: theme.bgSecondary, border: `1px solid ${theme.border}` }}>
-                <span className="text-xs" style={{ color: theme.textSecondary }}>
-                  {user.email}
-                </span>
-                <div style={{ width: '1px', height: '16px', backgroundColor: theme.border }}></div>
-                <button
-                  onClick={onLogout}
-                  className="px-3 py-1 rounded text-xs font-medium transition"
-                  style={{
-                    backgroundColor: theme.incorrect,
-                    color: '#ffffff'
-                  }}
+              <>
+                {/* XP and Level Display */}
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: theme.bgSecondary, border: `1px solid ${theme.accent}` }}>
+                  <span className="text-xs font-mono font-bold" style={{ color: theme.accent }}>
+                    Lv.{userLevel}
+                  </span>
+                  <div style={{ width: '1px', height: '16px', backgroundColor: theme.border }}></div>
+                  <div className="flex flex-col" style={{ minWidth: '80px' }}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs font-mono" style={{ color: theme.textMuted }}>XP</span>
+                      <span className="text-xs font-mono" style={{ color: theme.accent }}>{userXP}</span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: theme.border }}>
+                      <div 
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${calculateLevel(userXP).progressPercent}%`,
+                          backgroundColor: theme.accent
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono" style={{ color: theme.textMuted }}>
+                    {getLevelTitle(userLevel)}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg" style={{ backgroundColor: theme.bgSecondary, border: `1px solid ${theme.border}` }}>
+                  <span className="text-xs" style={{ color: theme.textSecondary }}>
+                    {user.email}
+                  </span>
+                  <div style={{ width: '1px', height: '16px', backgroundColor: theme.border }}></div>
+                  <button
+                    onClick={onLogout}
+                    className="px-3 py-1 rounded text-xs font-medium transition"
+                    style={{
+                      backgroundColor: theme.incorrect,
+                      color: '#ffffff'
+                    }}
                   onMouseEnter={(e) => e.target.style.opacity = '0.9'}
                   onMouseLeave={(e) => e.target.style.opacity = '1'}
                 >
                   Logout
                 </button>
               </div>
+              </>
             ) : (
               <>
                 <button
@@ -1058,6 +1153,68 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
                     )}
                   </svg>
                 </div>
+
+                {/* XP Earned Display */}
+                {user && xpEarned > 0 && (
+                  <div className="mb-8 p-6 rounded-lg" style={{ 
+                    backgroundColor: theme.accent + '15',
+                    border: `2px solid ${theme.accent}`,
+                    animation: showXpAnimation ? 'pulse 1s ease-in-out' : 'none'
+                  }}>
+                    <div className="text-center mb-4">
+                      <div className="text-sm mb-2" style={{ color: theme.textMuted }}>XP EARNED</div>
+                      <div className="text-5xl font-bold mb-2" style={{ color: theme.accent }}>
+                        +{xpEarned} XP
+                      </div>
+                      <div className="text-sm" style={{ color: theme.accent }}>
+                        {getMotivationalMessage(xpEarned)}
+                      </div>
+                    </div>
+                    
+                    {xpBreakdown && (
+                      <div className="grid grid-cols-5 gap-4 text-center text-xs">
+                        <div>
+                          <div style={{ color: theme.textMuted }}>Base</div>
+                          <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.base}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: theme.textMuted }}>WPM</div>
+                          <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.wpm}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: theme.textMuted }}>Accuracy</div>
+                          <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.accuracy}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: theme.textMuted }}>Duration</div>
+                          <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.duration}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: theme.textMuted }}>Consistency</div>
+                          <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.consistency}</div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="mt-4 text-center">
+                      <div className="text-sm mb-2" style={{ color: theme.textMuted }}>
+                        Level {userLevel} • {getLevelTitle(userLevel)}
+                      </div>
+                      <div className="w-full h-3 rounded-full" style={{ backgroundColor: theme.border }}>
+                        <div 
+                          className="h-full rounded-full transition-all duration-1000"
+                          style={{ 
+                            width: `${calculateLevel(userXP).progressPercent}%`,
+                            backgroundColor: theme.accent
+                          }}
+                        ></div>
+                      </div>
+                      <div className="text-xs mt-1" style={{ color: theme.textMuted }}>
+                        {calculateLevel(userXP).xpInCurrentLevel} / {calculateLevel(userXP).xpNeededForNextLevel} XP to next level
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Bottom Stats Grid */}
                 <div className="grid grid-cols-4 gap-6 mb-8">

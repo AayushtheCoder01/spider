@@ -148,8 +148,40 @@ export default function TestDetail({ user }) {
   return (
     <div 
       className="min-h-screen flex flex-col"
-      style={{ backgroundColor: theme.bg, color: theme.text }}
+      style={{ 
+        backgroundColor: theme.bg, 
+        color: theme.text,
+        fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace"
+      }}
     >
+      {/* Terminal Header Bar */}
+      <div 
+        className="px-4 py-2 flex items-center justify-between"
+        style={{ 
+          backgroundColor: theme.bgSecondary,
+          borderBottom: `1px solid ${theme.border}`
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ff5f56' }}></div>
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ffbd2e' }}></div>
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#27c93f' }}></div>
+          </div>
+          <span className="text-xs font-mono" style={{ color: theme.accent }}>
+            spidertype@testdetail
+          </span>
+          <span className="text-xs" style={{ color: theme.textMuted }}>:</span>
+          <span className="text-xs font-mono" style={{ color: theme.correct }}>~</span>
+          <span className="text-xs" style={{ color: theme.textMuted }}>$</span>
+        </div>
+        <div className="flex items-center gap-4 text-xs" style={{ color: theme.textMuted }}>
+          <span className="font-mono">bash</span>
+          <span>•</span>
+          <span className="font-mono">{new Date().toLocaleTimeString('en-US', { hour12: false })}</span>
+        </div>
+      </div>
+
       {/* Header */}
       <nav 
         className="px-8 py-4"
@@ -158,17 +190,27 @@ export default function TestDetail({ user }) {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <button
             onClick={() => navigate('/settings')}
-            className="flex items-center gap-2 transition"
-            style={{ color: theme.textSecondary }}
-            onMouseEnter={(e) => e.target.style.color = theme.accent}
-            onMouseLeave={(e) => e.target.style.color = theme.textSecondary}
+            className="flex items-center gap-2 transition font-mono px-4 py-2 rounded"
+            style={{ 
+              color: theme.textSecondary,
+              backgroundColor: theme.bgSecondary,
+              border: `1px solid ${theme.border}`
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.color = theme.accent;
+              e.target.style.borderColor = theme.accent;
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.color = theme.textSecondary;
+              e.target.style.borderColor = theme.border;
+            }}
           >
             <span className="text-xl">←</span>
-            <span className="text-sm">Back to Settings</span>
+            <span className="text-sm">$ cd ../settings</span>
           </button>
           
-          <h1 className="text-2xl font-bold" style={{ color: theme.text }}>
-            Test Details
+          <h1 className="text-2xl font-bold font-mono" style={{ color: theme.accent }}>
+            $ cat test_details.log
           </h1>
           
           <div className="w-32"></div>
@@ -233,11 +275,26 @@ export default function TestDetail({ user }) {
           {/* Content - Only show for premium users */}
           {isPremium && (
             <>
+          {/* Terminal Prompt */}
+          <div className="mb-6 px-6 py-3 rounded-lg font-mono text-sm" style={{ 
+            backgroundColor: theme.bgSecondary,
+            border: `1px solid ${theme.border}`
+          }}>
+            <span style={{ color: theme.accent }}>user@spidertype</span>
+            <span style={{ color: theme.textMuted }}>:</span>
+            <span style={{ color: theme.correct }}>~/tests</span>
+            <span style={{ color: theme.textMuted }}>$ </span>
+            <span style={{ color: theme.text }}>cat test_{testData.id}.json | jq</span>
+          </div>
+
           {/* Top Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div 
               className="p-6 rounded-lg text-center"
-              style={{ backgroundColor: theme.bgSecondary }}
+              style={{ 
+                backgroundColor: theme.bgSecondary,
+                border: `1px solid ${theme.border}`
+              }}
             >
               <div className="text-5xl font-bold mb-2" style={{ color: theme.accent }}>
                 {Math.round(testData.wpm)}
@@ -249,7 +306,10 @@ export default function TestDetail({ user }) {
 
             <div 
               className="p-6 rounded-lg text-center"
-              style={{ backgroundColor: theme.bgSecondary }}
+              style={{ 
+                backgroundColor: theme.bgSecondary,
+                border: `1px solid ${theme.border}`
+              }}
             >
               <div className="text-5xl font-bold mb-2" style={{ color: theme.correct }}>
                 {Math.round(testData.accuracy)}%
@@ -273,7 +333,10 @@ export default function TestDetail({ user }) {
 
             <div 
               className="p-6 rounded-lg text-center"
-              style={{ backgroundColor: theme.bgSecondary }}
+              style={{ 
+                backgroundColor: theme.bgSecondary,
+                border: `1px solid ${theme.border}`
+              }}
             >
               <div className="text-5xl font-bold mb-2" style={{ color: testData.consistency ? theme.correct : theme.textMuted }}>
                 {testData.consistency ? Math.round(testData.consistency) : 0}%
@@ -288,11 +351,17 @@ export default function TestDetail({ user }) {
           {testData.wpm_history && testData.wpm_history.length > 1 && (
             <div 
               className="p-6 rounded-lg mb-8"
-              style={{ backgroundColor: theme.bgSecondary }}
+              style={{ 
+                backgroundColor: theme.bgSecondary,
+                border: `1px solid ${theme.border}`
+              }}
             >
-              <h2 className="text-xl font-semibold mb-4" style={{ color: theme.text }}>
-                Performance Graph
-              </h2>
+              <div className="flex items-center gap-2 mb-4">
+                <span style={{ color: theme.accent }}>$</span>
+                <h2 className="text-xl font-semibold font-mono" style={{ color: theme.text }}>
+                  plot --type=line --data=wpm_history
+                </h2>
+              </div>
               <div style={{ height: '240px', padding: '20px 0' }}>
                 <svg width="100%" height="200" viewBox="0 0 800 200" preserveAspectRatio="xMidYMid meet">
                   <defs>
@@ -403,11 +472,17 @@ export default function TestDetail({ user }) {
             {/* Test Information */}
             <div 
               className="p-6 rounded-lg"
-              style={{ backgroundColor: theme.bgSecondary }}
+              style={{ 
+                backgroundColor: theme.bgSecondary,
+                border: `1px solid ${theme.border}`
+              }}
             >
-              <h2 className="text-xl font-semibold mb-4" style={{ color: theme.text }}>
-                Test Information
-              </h2>
+              <div className="flex items-center gap-2 mb-4 pb-2" style={{ borderBottom: `1px solid ${theme.border}` }}>
+                <span style={{ color: theme.accent }}>$</span>
+                <h2 className="text-xl font-semibold font-mono" style={{ color: theme.text }}>
+                  cat test_info.json
+                </h2>
+              </div>
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span style={{ color: theme.textMuted }}>Language:</span>
@@ -447,11 +522,17 @@ export default function TestDetail({ user }) {
             {/* Character Statistics */}
             <div 
               className="p-6 rounded-lg"
-              style={{ backgroundColor: theme.bgSecondary }}
+              style={{ 
+                backgroundColor: theme.bgSecondary,
+                border: `1px solid ${theme.border}`
+              }}
             >
-              <h2 className="text-xl font-semibold mb-4" style={{ color: theme.text }}>
-                Character Statistics
-              </h2>
+              <div className="flex items-center gap-2 mb-4 pb-2" style={{ borderBottom: `1px solid ${theme.border}` }}>
+                <span style={{ color: theme.accent }}>$</span>
+                <h2 className="text-xl font-semibold font-mono" style={{ color: theme.text }}>
+                  cat char_stats.json
+                </h2>
+              </div>
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span style={{ color: theme.textMuted }}>Correct Characters:</span>
@@ -483,11 +564,17 @@ export default function TestDetail({ user }) {
           {testData.device_meta && (
             <div 
               className="p-6 rounded-lg mb-8"
-              style={{ backgroundColor: theme.bgSecondary }}
+              style={{ 
+                backgroundColor: theme.bgSecondary,
+                border: `1px solid ${theme.border}`
+              }}
             >
-              <h2 className="text-xl font-semibold mb-4" style={{ color: theme.text }}>
-                Device Information
-              </h2>
+              <div className="flex items-center gap-2 mb-4 pb-2" style={{ borderBottom: `1px solid ${theme.border}` }}>
+                <span style={{ color: theme.accent }}>$</span>
+                <h2 className="text-xl font-semibold font-mono" style={{ color: theme.text }}>
+                  uname -a && env | grep DEVICE
+                </h2>
+              </div>
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span style={{ color: theme.textMuted }}>Platform:</span>
@@ -510,16 +597,23 @@ export default function TestDetail({ user }) {
           {/* Raw Data (JSON) */}
           <div 
             className="p-6 rounded-lg mb-8"
-            style={{ backgroundColor: theme.bgSecondary }}
+            style={{ 
+              backgroundColor: theme.bgSecondary,
+              border: `1px solid ${theme.border}`
+            }}
           >
-            <h2 className="text-xl font-semibold mb-4" style={{ color: theme.text }}>
-              Raw Data (JSON)
-            </h2>
+            <div className="flex items-center gap-2 mb-4 pb-2" style={{ borderBottom: `1px solid ${theme.border}` }}>
+              <span style={{ color: theme.accent }}>$</span>
+              <h2 className="text-xl font-semibold font-mono" style={{ color: theme.text }}>
+                cat test_data.json | jq '.'
+              </h2>
+            </div>
             <pre 
-              className="text-xs overflow-x-auto p-4 rounded"
+              className="text-xs overflow-x-auto p-4 rounded font-mono"
               style={{ 
                 backgroundColor: theme.bg,
-                color: theme.textSecondary 
+                color: theme.textSecondary,
+                border: `1px solid ${theme.border}`
               }}
             >
               {JSON.stringify(testData, null, 2)}

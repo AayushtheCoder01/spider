@@ -166,45 +166,89 @@ export default function Dashboard({ user }) {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: theme.bg }}>
+    <div className="min-h-screen" style={{ 
+      backgroundColor: theme.bg,
+      fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace"
+    }}>
+      {/* Terminal Header Bar */}
+      <div 
+        className="px-4 py-2 flex items-center justify-between"
+        style={{ 
+          backgroundColor: theme.bgSecondary,
+          borderBottom: `1px solid ${theme.border}`
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ff5f56' }}></div>
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ffbd2e' }}></div>
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#27c93f' }}></div>
+          </div>
+          <span className="text-xs font-mono" style={{ color: theme.accent }}>
+            spidertype@dashboard
+          </span>
+          <span className="text-xs" style={{ color: theme.textMuted }}>:</span>
+          <span className="text-xs font-mono" style={{ color: theme.correct }}>~</span>
+          <span className="text-xs" style={{ color: theme.textMuted }}>$</span>
+        </div>
+        <div className="flex items-center gap-4 text-xs" style={{ color: theme.textMuted }}>
+          <span className="font-mono">bash</span>
+          <span>•</span>
+          <span className="font-mono">{new Date().toLocaleTimeString('en-US', { hour12: false })}</span>
+        </div>
+      </div>
+
       {/* Navigation */}
       <nav className="px-8 py-6" style={{ borderBottom: `1px solid ${theme.border}` }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/')}
-              className="text-2xl font-bold transition"
-              style={{ color: theme.text }}
+              className="text-2xl font-bold transition font-mono"
+              style={{ color: theme.accent }}
             >
-              🕷️ SpiderType
+              $ ./spidertype
             </button>
             <PremiumBadge variant="active" label="Premium" subtle />
           </div>
           <button
             onClick={() => navigate('/settings')}
-            className="px-4 py-2 rounded-lg transition"
+            className="px-4 py-2 rounded-lg transition font-mono"
             style={{ 
               backgroundColor: theme.buttonBg,
               color: theme.text,
               border: `1px solid ${theme.border}`
             }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = theme.buttonHover}
-            onMouseLeave={(e) => e.target.style.backgroundColor = theme.buttonBg}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = theme.buttonHover;
+              e.target.style.borderColor = theme.accent;
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = theme.buttonBg;
+              e.target.style.borderColor = theme.border;
+            }}
           >
-            ← Back to Settings
+            $ cd ../settings
           </button>
         </div>
       </nav>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-8 py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2" style={{ color: theme.text }}>
-            📊 Dashboard
-          </h1>
-          <p style={{ color: theme.textMuted }}>
-            Track your typing progress and performance
+        {/* Terminal Prompt Header */}
+        <div className="mb-8 px-6 py-4 rounded-lg" style={{ 
+          backgroundColor: theme.bgSecondary,
+          border: `1px solid ${theme.border}`
+        }}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-mono" style={{ color: theme.accent }}>user@spidertype</span>
+            <span style={{ color: theme.textMuted }}>:</span>
+            <span className="font-mono" style={{ color: theme.correct }}>~/dashboard</span>
+            <span style={{ color: theme.textMuted }}>$</span>
+            <span className="font-mono" style={{ color: theme.text }}>./analytics --show-stats</span>
+          </div>
+          <p className="text-sm font-mono" style={{ color: theme.textMuted }}>
+            # Track your typing progress and performance
           </p>
         </div>
 
@@ -212,25 +256,25 @@ export default function Dashboard({ user }) {
         <div className="flex gap-4 mb-8">
           <button
             onClick={() => setTimeFilter('today')}
-            className="px-6 py-3 rounded-lg font-semibold transition-all duration-300"
+            className="px-6 py-3 rounded-lg font-mono font-semibold transition-all duration-300"
             style={{
               backgroundColor: timeFilter === 'today' ? theme.accent : theme.bgSecondary,
               color: timeFilter === 'today' ? theme.bg : theme.text,
               border: `2px solid ${timeFilter === 'today' ? theme.accent : theme.border}`,
             }}
           >
-            📅 Today
+            $ --filter=today
           </button>
           <button
             onClick={() => setTimeFilter('week')}
-            className="px-6 py-3 rounded-lg font-semibold transition-all duration-300"
+            className="px-6 py-3 rounded-lg font-mono font-semibold transition-all duration-300"
             style={{
               backgroundColor: timeFilter === 'week' ? theme.accent : theme.bgSecondary,
               color: timeFilter === 'week' ? theme.bg : theme.text,
               border: `2px solid ${timeFilter === 'week' ? theme.accent : theme.border}`,
             }}
           >
-            📆 This Week
+            $ --filter=week
           </button>
         </div>
 
@@ -274,10 +318,10 @@ export default function Dashboard({ user }) {
                   }}
                 />
                 <div className="relative">
-                  <div className="text-sm mb-2" style={{ color: theme.textMuted }}>
-                    Total Tests
+                  <div className="text-sm mb-2 font-mono" style={{ color: theme.textMuted }}>
+                    $ echo $TOTAL_TESTS
                   </div>
-                  <div className="text-4xl font-bold" style={{ color: theme.accent }}>
+                  <div className="text-4xl font-bold font-mono" style={{ color: theme.accent }}>
                     {currentStats.totalTests}
                   </div>
                 </div>
@@ -299,10 +343,10 @@ export default function Dashboard({ user }) {
                   }}
                 />
                 <div className="relative">
-                  <div className="text-sm mb-2" style={{ color: theme.textMuted }}>
-                    Average WPM
+                  <div className="text-sm mb-2 font-mono" style={{ color: theme.textMuted }}>
+                    $ echo $AVG_WPM
                   </div>
-                  <div className="text-4xl font-bold" style={{ color: theme.correct }}>
+                  <div className="text-4xl font-bold font-mono" style={{ color: theme.correct }}>
                     {currentStats.avgWpm}
                   </div>
                 </div>
@@ -324,10 +368,10 @@ export default function Dashboard({ user }) {
                   }}
                 />
                 <div className="relative">
-                  <div className="text-sm mb-2" style={{ color: theme.textMuted }}>
-                    Average Accuracy
+                  <div className="text-sm mb-2 font-mono" style={{ color: theme.textMuted }}>
+                    $ echo $AVG_ACCURACY
                   </div>
-                  <div className="text-4xl font-bold" style={{ color: theme.accent }}>
+                  <div className="text-4xl font-bold font-mono" style={{ color: theme.accent }}>
                     {currentStats.avgAccuracy}%
                   </div>
                 </div>
@@ -527,9 +571,12 @@ export default function Dashboard({ user }) {
 
             {/* Recent Tests */}
             <div>
-              <h2 className="text-2xl font-bold mb-4" style={{ color: theme.text }}>
-                Recent Tests
-              </h2>
+              <div className="flex items-center gap-2 mb-4">
+                <span style={{ color: theme.accent }}>$</span>
+                <h2 className="text-2xl font-bold font-mono" style={{ color: theme.text }}>
+                  ls -la ~/tests/recent
+                </h2>
+              </div>
               <div className="space-y-3">
                 {currentStats.tests.slice(0, 10).map((test) => (
                   <button
