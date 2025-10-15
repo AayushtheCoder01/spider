@@ -10,9 +10,17 @@ export default function Leaderboard({ user }) {
   const [loading, setLoading] = useState(true);
   const [languageFilter, setLanguageFilter] = useState('all');
   const [userRank, setUserRank] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const ITEMS_PER_PAGE = 20;
 
   useEffect(() => {
     fetchLeaderboard();
+  }, [languageFilter, currentPage]);
+
+  // Reset to page 1 when language filter changes
+  useEffect(() => {
+    setCurrentPage(1);
   }, [languageFilter]);
 
   const fetchLeaderboard = async () => {
@@ -22,12 +30,39 @@ export default function Leaderboard({ user }) {
       const now = new Date();
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
       
+      // First, get total count for pagination
+      let countQuery = supabase
+        .from('typing_results')
+        .select('*', { count: 'exact', head: false })
+        .gte('created_at', startOfToday.toISOString());
+
+      if (languageFilter !== 'all') {
+        countQuery = countQuery.eq('language', languageFilter);
+      }
+
+      const { data: allData, count, error: countError } = await countQuery;
+
+      if (countError) {
+        console.error('Error fetching count:', countError);
+        setTotalCount(0);
+      } else {
+        // Group by user to get actual unique user count
+        const userBestScoresForCount = {};
+        (allData || []).forEach(result => {
+          const userId = result.user_id;
+          if (!userBestScoresForCount[userId] || result.wpm > userBestScoresForCount[userId].wpm) {
+            userBestScoresForCount[userId] = result;
+          }
+        });
+        setTotalCount(Object.keys(userBestScoresForCount).length);
+      }
+
+      // Fetch all results for today (we need to process them to get best per user)
       let query = supabase
         .from('typing_results')
         .select('*')
         .gte('created_at', startOfToday.toISOString())
-        .order('wpm', { ascending: false })
-        .limit(100);
+        .order('wpm', { ascending: false });
 
       // Apply language filter
       if (languageFilter !== 'all') {
@@ -119,12 +154,16 @@ export default function Leaderboard({ user }) {
 
         // Sort by combined score
         const sortedData = enrichedData
-          .sort((a, b) => b.combinedScore - a.combinedScore)
-          .slice(0, 50); // Top 50
+          .sort((a, b) => b.combinedScore - a.combinedScore);
 
-        setLeaderboardData(sortedData);
+        // Apply pagination
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        const paginatedData = sortedData.slice(startIndex, endIndex);
 
-        // Find user's rank
+        setLeaderboardData(paginatedData);
+
+        // Find user's rank (in the full sorted data, not paginated)
         if (user) {
           const userIndex = sortedData.findIndex(item => item.user_id === user.id);
           if (userIndex !== -1) {
@@ -410,6 +449,80 @@ export default function Leaderboard({ user }) {
             </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {leaderboardData.length > 0 && (
+          <div 
+            className="mt-6 p-4 rounded-lg"
+            style={{ 
+              backgroundColor: theme.bgSecondary,
+              border: `1px solid ${theme.border}`
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-mono" style={{ color: theme.textMuted }}>
+                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of {totalCount} users
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 rounded text-sm font-mono transition"
+                  style={{
+                    backgroundColor: currentPage === 1 ? theme.bg : theme.bg,
+                    color: currentPage === 1 ? theme.textMuted : theme.text,
+                    border: `1px solid ${theme.border}`,
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    opacity: currentPage === 1 ? 0.5 : 1
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentPage !== 1) {
+                      e.target.style.backgroundColor = theme.buttonHover;
+                      e.target.style.borderColor = theme.accent;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentPage !== 1) {
+                      e.target.style.backgroundColor = theme.bg;
+                      e.target.style.borderColor = theme.border;
+                    }
+                  }}
+                >
+                  ← Previous
+                </button>
+                <span className="px-4 py-2 text-sm font-mono" style={{ color: theme.text }}>
+                  Page {currentPage} of {Math.ceil(totalCount / ITEMS_PER_PAGE)}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  disabled={currentPage >= Math.ceil(totalCount / ITEMS_PER_PAGE)}
+                  className="px-4 py-2 rounded text-sm font-mono transition"
+                  style={{
+                    backgroundColor: currentPage >= Math.ceil(totalCount / ITEMS_PER_PAGE) ? theme.bg : theme.bg,
+                    color: currentPage >= Math.ceil(totalCount / ITEMS_PER_PAGE) ? theme.textMuted : theme.text,
+                    border: `1px solid ${theme.border}`,
+                    cursor: currentPage >= Math.ceil(totalCount / ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer',
+                    opacity: currentPage >= Math.ceil(totalCount / ITEMS_PER_PAGE) ? 0.5 : 1
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentPage < Math.ceil(totalCount / ITEMS_PER_PAGE)) {
+                      e.target.style.backgroundColor = theme.buttonHover;
+                      e.target.style.borderColor = theme.accent;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentPage < Math.ceil(totalCount / ITEMS_PER_PAGE)) {
+                      e.target.style.backgroundColor = theme.bg;
+                      e.target.style.borderColor = theme.border;
+                    }
+                  }}
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Info Message */}
         {!user && (
