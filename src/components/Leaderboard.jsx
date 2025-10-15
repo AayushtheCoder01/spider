@@ -8,38 +8,26 @@ export default function Leaderboard({ user }) {
   const navigate = useNavigate();
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState('all'); // all, today, week, month
   const [languageFilter, setLanguageFilter] = useState('all');
   const [userRank, setUserRank] = useState(null);
 
   useEffect(() => {
     fetchLeaderboard();
-  }, [timeFilter, languageFilter]);
+  }, [languageFilter]);
 
   const fetchLeaderboard = async () => {
     setLoading(true);
     try {
+      // Always filter for today's results only
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      
       let query = supabase
         .from('typing_results')
         .select('*')
+        .gte('created_at', startOfToday.toISOString())
         .order('wpm', { ascending: false })
         .limit(100);
-
-      // Apply time filter
-      if (timeFilter !== 'all') {
-        const now = new Date();
-        let startDate;
-        
-        if (timeFilter === 'today') {
-          startDate = new Date(now.setHours(0, 0, 0, 0));
-        } else if (timeFilter === 'week') {
-          startDate = new Date(now.setDate(now.getDate() - 7));
-        } else if (timeFilter === 'month') {
-          startDate = new Date(now.setMonth(now.getMonth() - 1));
-        }
-        
-        query = query.gte('created_at', startDate.toISOString());
-      }
 
       // Apply language filter
       if (languageFilter !== 'all') {
@@ -235,26 +223,15 @@ export default function Leaderboard({ user }) {
 
       {/* Filters */}
       <div className="max-w-6xl mx-auto px-8 py-6">
-        <div className="flex items-center gap-6 mb-6">
-          {/* Time Filter */}
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-mono" style={{ color: theme.textMuted }}>Time:</span>
-            <div className="flex gap-2">
-              {['all', 'today', 'week', 'month'].map(filter => (
-                <button
-                  key={filter}
-                  onClick={() => setTimeFilter(filter)}
-                  className="px-3 py-1.5 rounded text-sm font-mono transition"
-                  style={{
-                    backgroundColor: timeFilter === filter ? theme.accent : theme.bgSecondary,
-                    color: timeFilter === filter ? theme.bg : theme.textSecondary,
-                    border: `1px solid ${timeFilter === filter ? theme.accent : theme.border}`
-                  }}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
+        <div className="flex items-center justify-between mb-6">
+          {/* Today's Leaderboard Title */}
+          <div>
+            <h2 className="text-xl font-bold font-mono" style={{ color: theme.accent }}>
+              📅 Today's Leaderboard
+            </h2>
+            <p className="text-sm font-mono mt-1" style={{ color: theme.textMuted }}>
+              Rankings reset daily at midnight
+            </p>
           </div>
 
           {/* Language Filter */}
