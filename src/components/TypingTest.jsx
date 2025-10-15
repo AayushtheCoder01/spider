@@ -736,6 +736,35 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
         } catch (xpErr) {
           console.error('Error updating XP:', xpErr);
         }
+
+        // Save test result to Supabase for leaderboard
+        try {
+          const { error: resultError } = await supabase
+            .from('typing_results')
+            .insert({
+              user_id: user.id,
+              wpm: wpm,
+              raw_wpm: rawWpm,
+              accuracy: accuracy,
+              consistency: consistency,
+              errors: errors,
+              correct_chars: correctChars,
+              incorrect_chars: incorrectChars,
+              duration_seconds: duration,
+              time_remaining: timeLeft,
+              language: language,
+              wpm_history: wpmHistory,
+              created_at: new Date().toISOString()
+            });
+
+          if (resultError) {
+            console.error('Error saving test result to database:', resultError);
+          } else {
+            console.log('Test result saved to database for leaderboard');
+          }
+        } catch (resultErr) {
+          console.error('Error saving test result:', resultErr);
+        }
       }
 
       // Get existing results from localStorage
@@ -821,6 +850,25 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* Navigation Buttons - Left */}
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/leaderboard')}
+              className="px-4 py-2 rounded text-sm transition font-mono"
+              style={{
+                backgroundColor: theme.bgSecondary,
+                color: theme.textSecondary,
+                border: `1px solid ${theme.border}`
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = theme.buttonHover;
+                e.target.style.borderColor = theme.accent;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = theme.bgSecondary;
+                e.target.style.borderColor = theme.border;
+              }}
+            >
+              🏆 leaderboard
+            </button>
             <button
               onClick={() => navigate('/settings')}
               className="px-4 py-2 rounded text-sm transition font-mono"

@@ -5,11 +5,57 @@ import { useTheme } from '../contexts/ThemeContext';
 export default function Signup({ onToggleForm }) {
   const { theme } = useTheme();
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState(null);
+
+  // Check username availability
+  const checkUsernameAvailability = async (usernameToCheck) => {
+    if (!usernameToCheck || usernameToCheck.length < 3) {
+      setUsernameAvailable(null);
+      return;
+    }
+
+    // Validate format
+    if (!/^[a-zA-Z0-9_]+$/.test(usernameToCheck)) {
+      setUsernameAvailable(false);
+      setErrors({ ...errors, username: 'Only letters, numbers, and underscores allowed' });
+      return;
+    }
+
+    setCheckingUsername(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('username')
+        .eq('username', usernameToCheck)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking username:', error);
+        setUsernameAvailable(null);
+      } else {
+        setUsernameAvailable(!data);
+        if (data) {
+          setErrors({ ...errors, username: 'Username already taken' });
+        } else {
+          const newErrors = { ...errors };
+          delete newErrors.username;
+          setErrors(newErrors);
+        }
+      }
+    } catch (err) {
+      console.error('Username check error:', err);
+      setUsernameAvailable(null);
+    } finally {
+      setCheckingUsername(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,6 +70,26 @@ export default function Signup({ onToggleForm }) {
     
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setErrors({ email: 'Please enter a valid email address' });
+      return;
+    }
+
+    if (!username.trim()) {
+      setErrors({ username: 'Username is required' });
+      return;
+    }
+
+    if (username.length < 3 || username.length > 50) {
+      setErrors({ username: 'Username must be 3-50 characters' });
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      setErrors({ username: 'Username can only contain letters, numbers, and underscores' });
+      return;
+    }
+
+    if (usernameAvailable === false) {
+      setErrors({ username: 'Username already taken' });
       return;
     }
     
@@ -66,8 +132,28 @@ export default function Signup({ onToggleForm }) {
           setErrors({ general: error.message });
         }
       } else if (data?.user) {
+        // Create user profile with username
+        try {
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: data.user.id,
+              email: email.trim().toLowerCase(),
+              username: username.trim(),
+              tier: 'free',
+              xp: 0
+            });
+
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+          }
+        } catch (profileErr) {
+          console.error('Profile creation error:', profileErr);
+        }
+
         setSuccess('Account created successfully! Redirecting to login...');
         setEmail('');
+        setUsername('');
         setPassword('');
         setConfirmPassword('');
         setTimeout(() => {
@@ -247,6 +333,80 @@ export default function Signup({ onToggleForm }) {
                   <span>{errors.email}</span>
                 </p>
               )}
+            </div>
+
+            <div>
+              <label htmlFor="username" className="block text-sm font-mono font-medium mb-2" style={{ color: theme.textMuted }}>
+                <span style={{ color: theme.accent }}>$</span> --username
+              </label>
+              <div className="relative">
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setUsername(value);
+                    if (errors.username) {
+                      const newErrors = { ...errors };
+                      delete newErrors.username;
+                      setErrors(newErrors);
+                    }
+                    // Debounce username check
+                    if (value.length >= 3) {
+                      setTimeout(() => checkUsernameAvailability(value), 500);
+                    } else {
+                      setUsernameAvailable(null);
+                    }
+                  }}
+                  className="appearance-none relative block w-full px-4 py-3 rounded-lg focus:outline-none transition font-mono"
+                  style={{
+                    backgroundColor: theme.bg,
+                    color: theme.text,
+                    border: `2px solid ${errors.username ? theme.incorrect : usernameAvailable === true ? theme.correct : theme.border}`,
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = theme.accent}
+                  onBlur={(e) => e.target.style.borderColor = errors.username ? theme.incorrect : usernameAvailable === true ? theme.correct : theme.border}
+                  placeholder="your_username"
+                  maxLength={50}
+                />
+                {checkingUsername && (
+                  <div className="absolute right-3 top-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2" style={{ 
+                      borderColor: theme.border,
+                      borderTopColor: theme.accent 
+                    }}></div>
+                  </div>
+                )}
+                {!checkingUsername && usernameAvailable === true && (
+                  <div className="absolute right-3 top-3 text-lg" style={{ color: theme.correct }}>
+                    ✓
+                  </div>
+                )}
+                {!checkingUsername && usernameAvailable === false && (
+                  <div className="absolute right-3 top-3 text-lg" style={{ color: theme.incorrect }}>
+                    ✗
+                  </div>
+                )}
+              </div>
+              {errors.username && (
+                <p className="mt-2 text-sm font-mono flex items-center gap-2" style={{ color: theme.incorrect }}>
+                  <span>✗</span>
+                  <span>{errors.username}</span>
+                </p>
+              )}
+              {!errors.username && usernameAvailable === true && (
+                <p className="mt-2 text-sm font-mono flex items-center gap-2" style={{ color: theme.correct }}>
+                  <span>✓</span>
+                  <span>Username available!</span>
+                </p>
+              )}
+              <p className="mt-2 text-xs font-mono" style={{ color: theme.textMuted }}>
+                // 3-50 chars, letters, numbers, underscores only
+              </p>
             </div>
             
             <div>

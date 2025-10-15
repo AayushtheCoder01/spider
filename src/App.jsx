@@ -8,6 +8,7 @@ import Settings from './components/Settings';
 import TestDetail from './components/TestDetail';
 import Premium from './components/Premium';
 import Dashboard from './components/Dashboard';
+import Leaderboard from './components/Leaderboard';
 import { useTheme } from './contexts/ThemeContext';
 
 function App() {
@@ -149,6 +150,7 @@ function App() {
         <Route path="/test/:testId" element={<TestDetail user={user} />} />
         <Route path="/premium" element={<Premium user={user} />} />
         <Route path="/dashboard" element={<Dashboard user={user} />} />
+        <Route path="/leaderboard" element={<Leaderboard user={user} />} />
       </Routes>
     </>
   );
