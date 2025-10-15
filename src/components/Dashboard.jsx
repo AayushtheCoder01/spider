@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../supabase-client';
 import PremiumBadge from './PremiumBadge';
+import { calculateLevel, getLevelTitle, getUserStats, ACHIEVEMENTS } from '../utils/xpSystem';
 
 export default function Dashboard({ user }) {
   const { theme } = useTheme();
@@ -12,6 +13,10 @@ export default function Dashboard({ user }) {
   const [todayStats, setTodayStats] = useState({ tests: [], avgWpm: 0, avgAccuracy: 0, totalTests: 0 });
   const [weekStats, setWeekStats] = useState({ tests: [], avgWpm: 0, avgAccuracy: 0, totalTests: 0 });
   const [timeFilter, setTimeFilter] = useState('today'); // 'today' or 'week'
+  const [userXP, setUserXP] = useState(0);
+  const [userLevel, setUserLevel] = useState(1);
+  const [userStats, setUserStats] = useState(null);
+  const [unlockedAchievements, setUnlockedAchievements] = useState([]);
 
   useEffect(() => {
     if (user) {
@@ -23,10 +28,10 @@ export default function Dashboard({ user }) {
     setLoading(true);
     
     try {
-      // Check premium status
+      // Check premium status and load XP
       const { data: profileData } = await supabase
         .from('user_profiles')
-        .select('tier, premium_until')
+        .select('tier, premium_until, xp')
         .eq('id', user.id)
         .single();
 
@@ -34,6 +39,27 @@ export default function Dashboard({ user }) {
       const isExpired = profileData?.premium_until && new Date(profileData.premium_until) < now;
       const premium = profileData?.tier === 'premium' && !isExpired;
       setIsPremium(premium);
+
+      // Load user XP and calculate level
+      const currentXP = profileData?.xp || 0;
+      setUserXP(currentXP);
+      const levelInfo = calculateLevel(currentXP);
+      setUserLevel(levelInfo.level);
+
+      // Load streak data from Supabase
+      const { data: streakData } = await supabase
+        .from('user_streaks')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      // Load achievements from Supabase
+      const { data: achievementsData } = await supabase
+        .from('user_achievements')
+        .select('achievement_id')
+        .eq('user_id', user.id);
+
+      setUnlockedAchievements(achievementsData ? achievementsData.map(a => a.achievement_id) : []);
 
       if (!premium) {
         setLoading(false);
@@ -44,12 +70,12 @@ export default function Dashboard({ user }) {
       const allTests = JSON.parse(localStorage.getItem('typingResults') || '[]');
       
       // Filter today's tests
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      const todayStartTime = new Date();
+      todayStartTime.setHours(0, 0, 0, 0);
       
       const todayTests = allTests.filter(test => {
         const testDate = new Date(test.timestamp);
-        return testDate >= todayStart;
+        return testDate >= todayStartTime;
       });
 
       // Filter this week's tests
@@ -85,6 +111,44 @@ export default function Dashboard({ user }) {
           totalTests: weekTests.length
         });
       }
+
+      // Calculate comprehensive user stats
+      const avgWpm = allTests.length > 0 
+        ? Math.round(allTests.reduce((sum, t) => sum + (t.wpm || 0), 0) / allTests.length)
+        : 0;
+      
+      const avgAccuracy = allTests.length > 0
+        ? Math.round(allTests.reduce((sum, t) => sum + (t.accuracy || 0), 0) / allTests.length)
+        : 0;
+      
+      const bestWpm = allTests.length > 0
+        ? Math.max(...allTests.map(t => t.wpm || 0))
+        : 0;
+      
+      const perfectAccuracyCount = allTests.filter(t => t.accuracy >= 100).length;
+
+      // Calculate tests today from localStorage (more accurate than Supabase)
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const testsCompletedToday = allTests.filter(test => {
+        const testDate = new Date(test.timestamp);
+        return testDate >= todayStart;
+      }).length;
+
+      const stats = {
+        totalTests: streakData?.total_tests || allTests.length,
+        currentStreak: streakData?.current_streak || 0,
+        bestStreak: streakData?.best_streak || 0,
+        todayTests: testsCompletedToday, // Use calculated value from localStorage
+        avgWpm,
+        avgAccuracy,
+        bestWpm,
+        perfectAccuracyCount,
+        unlockedAchievements: achievementsData?.length || 0,
+        totalAchievements: Object.keys(ACHIEVEMENTS).length
+      };
+      
+      setUserStats(stats);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -235,6 +299,185 @@ export default function Dashboard({ user }) {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-8 py-12">
+        {/* Gamification Stats Section */}
+        {userStats && (
+          <div className="mb-12">
+            {/* XP and Level Card */}
+            <div 
+              className="p-6 rounded-lg mb-6 relative overflow-hidden"
+              style={{ 
+                backgroundColor: theme.bgSecondary,
+                border: `2px solid ${theme.accent}`,
+                boxShadow: `0 8px 32px ${theme.accent}30`
+              }}
+            >
+              <div 
+                className="absolute inset-0 opacity-5"
+                style={{
+                  background: `linear-gradient(135deg, ${theme.accent}, ${theme.correct}, ${theme.accent})`,
+                  backgroundSize: '200% 200%',
+                  animation: 'gradient 3s ease infinite',
+                }}
+              />
+
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="text-4xl font-bold" style={{ color: theme.accent }}>
+                        Level {userLevel}
+                      </span>
+                      <span className="text-2xl">{getLevelTitle(userLevel).split(' ')[0]}</span>
+                    </div>
+                    <p className="text-sm" style={{ color: theme.textMuted }}>
+                      {getLevelTitle(userLevel)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold" style={{ color: theme.correct }}>
+                      {userXP.toLocaleString()}
+                    </div>
+                    <div className="text-xs" style={{ color: theme.textMuted }}>
+                      Total XP
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-2">
+                  <div 
+                    className="h-3 rounded-full overflow-hidden"
+                    style={{ backgroundColor: theme.buttonBg }}
+                  >
+                    <div 
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ 
+                        width: `${calculateLevel(userXP).progressPercent}%`,
+                        backgroundColor: theme.accent,
+                        boxShadow: `0 0 10px ${theme.accent}80`
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1 text-xs" style={{ color: theme.textMuted }}>
+                    <span>{calculateLevel(userXP).xpInCurrentLevel} XP</span>
+                    <span>{calculateLevel(userXP).xpNeededForNextLevel} XP to Level {userLevel + 1}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div 
+                className="p-4 rounded-lg text-center"
+                style={{ 
+                  backgroundColor: theme.bgSecondary,
+                  border: `1px solid ${theme.border}`
+                }}
+              >
+                <div className="text-3xl mb-2">🔥</div>
+                <div className="text-2xl font-bold mb-1" style={{ color: theme.accent }}>
+                  {userStats.currentStreak}
+                </div>
+                <div className="text-xs" style={{ color: theme.textMuted }}>
+                  Day Streak
+                </div>
+              </div>
+
+              <div 
+                className="p-4 rounded-lg text-center"
+                style={{ 
+                  backgroundColor: theme.bgSecondary,
+                  border: `1px solid ${theme.border}`
+                }}
+              >
+                <div className="text-3xl mb-2">📝</div>
+                <div className="text-2xl font-bold mb-1" style={{ color: theme.correct }}>
+                  {userStats.todayTests}
+                </div>
+                <div className="text-xs" style={{ color: theme.textMuted }}>
+                  Tests Today
+                </div>
+              </div>
+
+              <div 
+                className="p-4 rounded-lg text-center"
+                style={{ 
+                  backgroundColor: theme.bgSecondary,
+                  border: `1px solid ${theme.border}`
+                }}
+              >
+                <div className="text-3xl mb-2">🏆</div>
+                <div className="text-2xl font-bold mb-1" style={{ color: theme.accent }}>
+                  {userStats.totalTests}
+                </div>
+                <div className="text-xs" style={{ color: theme.textMuted }}>
+                  Total Tests
+                </div>
+              </div>
+
+              <div 
+                className="p-4 rounded-lg text-center"
+                style={{ 
+                  backgroundColor: theme.bgSecondary,
+                  border: `1px solid ${theme.border}`
+                }}
+              >
+                <div className="text-3xl mb-2">⭐</div>
+                <div className="text-2xl font-bold mb-1" style={{ color: theme.correct }}>
+                  {userStats.unlockedAchievements}/{userStats.totalAchievements}
+                </div>
+                <div className="text-xs" style={{ color: theme.textMuted }}>
+                  Achievements
+                </div>
+              </div>
+            </div>
+
+            {/* Achievements Display */}
+            <div 
+              className="p-6 rounded-lg"
+              style={{ 
+                backgroundColor: theme.bgSecondary,
+                border: `1px solid ${theme.border}`
+              }}
+            >
+              <h3 className="text-lg font-semibold mb-4" style={{ color: theme.text }}>
+                Achievements ({userStats.unlockedAchievements}/{userStats.totalAchievements})
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {Object.values(ACHIEVEMENTS).map((achievement) => {
+                  const unlocked = unlockedAchievements.includes(achievement.id);
+                  return (
+                    <div
+                      key={achievement.id}
+                      className="p-3 rounded-lg text-center transition-all duration-300"
+                      style={{
+                        backgroundColor: unlocked ? theme.accent + '20' : theme.buttonBg,
+                        border: `1px solid ${unlocked ? theme.accent : theme.border}`,
+                        opacity: unlocked ? 1 : 0.4,
+                        transform: unlocked ? 'scale(1)' : 'scale(0.95)'
+                      }}
+                      title={achievement.description}
+                    >
+                      <div className="text-3xl mb-1">{achievement.icon}</div>
+                      <div 
+                        className="text-xs font-semibold mb-1"
+                        style={{ color: unlocked ? theme.accent : theme.textMuted }}
+                      >
+                        {achievement.name}
+                      </div>
+                      {unlocked && (
+                        <div className="text-xs" style={{ color: theme.textMuted }}>
+                          +{achievement.xp} XP
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Terminal Prompt Header */}
         <div className="mb-8 px-6 py-4 rounded-lg" style={{ 
           backgroundColor: theme.bgSecondary,

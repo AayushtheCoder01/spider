@@ -2,7 +2,18 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../supabase-client';
-import { calculateXP, calculateLevel, getLevelTitle, getMotivationalMessage } from '../utils/xpSystem';
+import { 
+  calculateXP, 
+  calculateLevel, 
+  getLevelTitle, 
+  getMotivationalMessage,
+  calculateStreak,
+  calculateStreakSupabase,
+  checkAchievements,
+  checkAchievementsSupabase,
+  incrementTodayTestCount,
+  getUserStats
+} from '../utils/xpSystem';
 
 // Small words (2-3 letters) - will be selected more frequently
 const SMALL_WORDS = [
@@ -344,6 +355,10 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
   const [xpBreakdown, setXpBreakdown] = useState(null);
   const [showXpAnimation, setShowXpAnimation] = useState(false);
   
+  // Gamification states (streaks, combos)
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [sessionCombo, setSessionCombo] = useState(0);
+  
   const inputRef = useRef(null);
   const userInputRef = useRef('');
   const textDisplayRef = useRef(null);
@@ -374,6 +389,16 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
       setUserXP(currentXP);
       const levelInfo = calculateLevel(currentXP);
       setUserLevel(levelInfo.level);
+      
+      // Load streak data from Supabase
+      const { data: streakData } = await supabase
+        .from('user_streaks')
+        .select('current_streak')
+        .eq('user_id', user.id)
+        .single();
+      
+      const streak = streakData?.current_streak || 0;
+      setCurrentStreak(streak);
     };
 
     checkPremium();
@@ -587,17 +612,99 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
         },
       };
 
-      // Calculate XP earned
+      // Update streak (use Supabase if logged in, localStorage otherwise)
+      let streakInfo;
+      let testsToday = 1;
+      let totalTests = 1;
+      
+      if (user) {
+        // Fetch current streak data from Supabase
+        const { data: streakData } = await supabase
+          .from('user_streaks')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        // Calculate and update streak in Supabase
+        streakInfo = await calculateStreakSupabase(supabase, user.id, streakData);
+        testsToday = streakInfo.testsToday;
+        totalTests = streakInfo.totalTests;
+      } else {
+        // Fallback to localStorage for non-logged users
+        const lastTestDate = localStorage.getItem('lastTestDate');
+        streakInfo = calculateStreak(lastTestDate);
+        testsToday = incrementTodayTestCount();
+        const stats = getUserStats();
+        totalTests = stats.totalTests;
+      }
+      
+      setCurrentStreak(streakInfo.streak);
+      
+      // Increment session combo
+      const newCombo = sessionCombo + 1;
+      setSessionCombo(newCombo);
+      
+      // Calculate XP earned with streak and combo bonuses
       const xpData = calculateXP({
         wpm: wpm,
         accuracy: accuracy,
         duration_seconds: duration,
         consistency: consistency,
-        errors: errors
+        errors: errors,
+        streak: streakInfo.streak,
+        combo: newCombo - 1 // Use previous combo for calculation
       });
       
       setXpEarned(xpData.total);
       setXpBreakdown(xpData);
+      
+      // Check for achievements
+      let unlockedAchievements = [];
+      
+      if (user) {
+        // Fetch existing achievements from Supabase
+        const { data: existingAch } = await supabase
+          .from('user_achievements')
+          .select('achievement_id')
+          .eq('user_id', user.id);
+        
+        const existingAchIds = existingAch ? existingAch.map(a => a.achievement_id) : [];
+        
+        // Get perfect accuracy count from test history
+        const allTests = JSON.parse(localStorage.getItem('typingResults') || '[]');
+        const perfectAccuracyCount = allTests.filter(t => t.accuracy >= 100).length;
+        
+        // Check achievements with Supabase
+        unlockedAchievements = await checkAchievementsSupabase(supabase, user.id, {
+          wpm: wpm,
+          accuracy: accuracy,
+          consistency: consistency,
+          streak: streakInfo.streak,
+          totalTests: totalTests,
+          perfectAccuracyCount: perfectAccuracyCount,
+          testsToday: testsToday
+        }, existingAchIds);
+      } else {
+        // Fallback to localStorage
+        const stats = getUserStats();
+        unlockedAchievements = checkAchievements({
+          wpm: wpm,
+          accuracy: accuracy,
+          consistency: consistency,
+          streak: streakInfo.streak,
+          totalTests: stats.totalTests,
+          perfectAccuracyCount: stats.perfectAccuracyCount
+        });
+      }
+      
+      if (unlockedAchievements.length > 0) {
+        // Don't show popup - achievements only visible in Settings
+        // But still add XP bonus
+        const achievementXP = unlockedAchievements.reduce((sum, ach) => sum + ach.xp, 0);
+        xpData.total += achievementXP;
+        xpData.achievements = achievementXP;
+        setXpEarned(xpData.total);
+      }
       
       // Save XP to Supabase if user is logged in
       if (user) {
@@ -1172,27 +1279,63 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
                     </div>
                     
                     {xpBreakdown && (
-                      <div className="grid grid-cols-5 gap-4 text-center text-xs">
-                        <div>
-                          <div style={{ color: theme.textMuted }}>Base</div>
-                          <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.base}</div>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-5 gap-4 text-center text-xs">
+                          <div>
+                            <div style={{ color: theme.textMuted }}>Base</div>
+                            <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.base}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: theme.textMuted }}>WPM</div>
+                            <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.wpm}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: theme.textMuted }}>Accuracy</div>
+                            <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.accuracy}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: theme.textMuted }}>Duration</div>
+                            <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.duration}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: theme.textMuted }}>Consistency</div>
+                            <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.consistency}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div style={{ color: theme.textMuted }}>WPM</div>
-                          <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.wpm}</div>
-                        </div>
-                        <div>
-                          <div style={{ color: theme.textMuted }}>Accuracy</div>
-                          <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.accuracy}</div>
-                        </div>
-                        <div>
-                          <div style={{ color: theme.textMuted }}>Duration</div>
-                          <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.duration}</div>
-                        </div>
-                        <div>
-                          <div style={{ color: theme.textMuted }}>Consistency</div>
-                          <div className="font-bold" style={{ color: theme.text }}>+{xpBreakdown.consistency}</div>
-                        </div>
+                        
+                        {/* Streak and Combo Bonuses */}
+                        {(xpBreakdown.streak > 0 || xpBreakdown.combo > 0 || xpBreakdown.achievements > 0) && (
+                          <div className="pt-4 border-t" style={{ borderColor: theme.border }}>
+                            <div className="text-xs font-semibold mb-2" style={{ color: theme.accent }}>
+                              🎉 BONUS XP!
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 text-center text-xs">
+                              {xpBreakdown.streak > 0 && (
+                                <div>
+                                  <div style={{ color: theme.textMuted }}>🔥 {currentStreak} Day Streak</div>
+                                  <div className="font-bold text-lg" style={{ color: theme.accent }}>+{xpBreakdown.streak}</div>
+                                </div>
+                              )}
+                              {xpBreakdown.combo > 0 && (
+                                <div>
+                                  <div style={{ color: theme.textMuted }}>⚡ {sessionCombo}x Combo</div>
+                                  <div className="font-bold text-lg" style={{ color: theme.accent }}>+{xpBreakdown.combo}</div>
+                                </div>
+                              )}
+                              {xpBreakdown.achievements > 0 && (
+                                <div>
+                                  <div style={{ color: theme.textMuted }}>⭐ Achievements</div>
+                                  <div className="font-bold text-lg" style={{ color: theme.correct }}>+{xpBreakdown.achievements}</div>
+                                </div>
+                              )}
+                            </div>
+                            {xpBreakdown.multiplier > 1 && (
+                              <div className="mt-2 text-center text-sm font-bold" style={{ color: theme.accent }}>
+                                Total Multiplier: {xpBreakdown.multiplier.toFixed(2)}x
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                     
@@ -1412,6 +1555,62 @@ export default function TypingTest({ user, onLogout, onShowLogin, onShowSignup }
           )}
         </div>
       </div>
+
+      {/* Streak Indicator - Only visible when test is active */}
+      {isActive && !isFinished && startTime && currentStreak > 0 && (
+        <div 
+          className="fixed bottom-8 left-8 p-4 rounded-lg"
+          style={{
+            backgroundColor: theme.bgSecondary,
+            border: `2px solid ${currentStreak >= 7 ? theme.accent : theme.border}`,
+            boxShadow: currentStreak >= 7 ? `0 4px 16px ${theme.accent}40` : 'none'
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <div className="text-2xl">🔥</div>
+            <div>
+              <div className="text-xs" style={{ color: theme.textMuted }}>
+                Current Streak
+              </div>
+              <div className="text-xl font-bold" style={{ color: theme.accent }}>
+                {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}
+              </div>
+              {currentStreak >= 7 && (
+                <div className="text-xs font-bold" style={{ color: theme.accent }}>
+                  +{currentStreak >= 30 ? '100' : currentStreak >= 14 ? '50' : '25'}% XP Bonus!
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session Combo Indicator - Only visible when test is active */}
+      {isActive && !isFinished && startTime && sessionCombo > 0 && (
+        <div 
+          className="fixed bottom-8 left-64 p-3 rounded-lg"
+          style={{
+            backgroundColor: theme.bgSecondary,
+            border: `2px solid ${theme.correct}`,
+            boxShadow: `0 4px 16px ${theme.correct}40`
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <div className="text-xl">⚡</div>
+            <div>
+              <div className="text-xs" style={{ color: theme.textMuted }}>
+                Session Combo
+              </div>
+              <div className="text-lg font-bold" style={{ color: theme.correct }}>
+                {sessionCombo}x
+              </div>
+              <div className="text-xs" style={{ color: theme.textMuted }}>
+                +{(sessionCombo * 5)}% XP
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase-client';
 import PremiumBadge from './PremiumBadge';
+import { calculateLevel, getLevelTitle, getUserStats, ACHIEVEMENTS } from '../utils/xpSystem';
 
 export default function Settings({ user }) {
   const { theme, themeName, themes, setTheme } = useTheme();
@@ -13,6 +14,10 @@ export default function Settings({ user }) {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
+  const [userXP, setUserXP] = useState(0);
+  const [userLevel, setUserLevel] = useState(1);
+  const [userStats, setUserStats] = useState(null);
+  const [unlockedAchievements, setUnlockedAchievements] = useState([]);
   const ITEMS_PER_PAGE = 10;
 
   const themesList = Object.entries(themes);
@@ -21,17 +26,84 @@ export default function Settings({ user }) {
   useEffect(() => {
     const fetchHistory = async () => {
       if (!user) {
+        // Load stats from localStorage for non-logged users
+        const stats = getUserStats();
+        setUserStats(stats);
+        setUnlockedAchievements(JSON.parse(localStorage.getItem('unlockedAchievements') || '[]'));
         setLoading(false);
         return;
       }
 
       try {
-        // Check premium status
+        // Check premium status and load XP
         const { data: profileData } = await supabase
           .from('user_profiles')
-          .select('tier, premium_until')
+          .select('tier, premium_until, xp')
           .eq('id', user.id)
           .single();
+
+        // Load user XP and calculate level
+        const currentXP = profileData?.xp || 0;
+        setUserXP(currentXP);
+        const levelInfo = calculateLevel(currentXP);
+        setUserLevel(levelInfo.level);
+
+        // Load streak data from Supabase
+        const { data: streakData } = await supabase
+          .from('user_streaks')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        // Load achievements from Supabase
+        const { data: achievementsData } = await supabase
+          .from('user_achievements')
+          .select('achievement_id')
+          .eq('user_id', user.id);
+
+        setUnlockedAchievements(achievementsData ? achievementsData.map(a => a.achievement_id) : []);
+
+        // Get test history from localStorage (used for stats and history)
+        const allTestsData = JSON.parse(localStorage.getItem('typingResults') || '[]');
+        
+        // Calculate stats
+        const avgWpm = allTestsData.length > 0 
+          ? Math.round(allTestsData.reduce((sum, t) => sum + (t.wpm || 0), 0) / allTestsData.length)
+          : 0;
+        
+        const avgAccuracy = allTestsData.length > 0
+          ? Math.round(allTestsData.reduce((sum, t) => sum + (t.accuracy || 0), 0) / allTestsData.length)
+          : 0;
+        
+        const bestWpm = allTestsData.length > 0
+          ? Math.max(...allTestsData.map(t => t.wpm || 0))
+          : 0;
+        
+        const perfectAccuracyCount = allTestsData.filter(t => t.accuracy >= 100).length;
+
+        // Calculate tests today from localStorage (more accurate)
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const testsCompletedToday = allTestsData.filter(test => {
+          const testDate = new Date(test.timestamp);
+          return testDate >= todayStart;
+        }).length;
+
+        // Combine Supabase and localStorage data
+        const stats = {
+          totalTests: streakData?.total_tests || allTestsData.length,
+          currentStreak: streakData?.current_streak || 0,
+          bestStreak: streakData?.best_streak || 0,
+          todayTests: testsCompletedToday, // Use calculated value from localStorage
+          avgWpm,
+          avgAccuracy,
+          bestWpm,
+          perfectAccuracyCount,
+          unlockedAchievements: achievementsData?.length || 0,
+          totalAchievements: Object.keys(ACHIEVEMENTS).length
+        };
+        
+        setUserStats(stats);
 
         // Check if premium has expired
         const now = new Date();
@@ -72,11 +144,8 @@ export default function Settings({ user }) {
           setIsPremium(userIsPremium);
         }
 
-        // Fetch test history from localStorage
-        const allTests = JSON.parse(localStorage.getItem('typingResults') || '[]');
-        
-        // Get first page of results
-        const paginatedTests = allTests.slice(0, ITEMS_PER_PAGE);
+        // Prepare test history for display
+        const paginatedTests = allTestsData.slice(0, ITEMS_PER_PAGE);
         
         // Add created_at field for compatibility
         const testsWithCreatedAt = paginatedTests.map(test => ({
@@ -85,7 +154,7 @@ export default function Settings({ user }) {
         }));
         
         setTestHistory(testsWithCreatedAt);
-        setHasMore(allTests.length > ITEMS_PER_PAGE);
+        setHasMore(allTestsData.length > ITEMS_PER_PAGE);
       } catch (err) {
         console.error('Unexpected error:', err);
       } finally {
@@ -159,6 +228,297 @@ export default function Settings({ user }) {
       {/* Main Content */}
       <div className="flex-1 px-8 py-12">
         <div className="max-w-4xl mx-auto">
+          {/* Gamification moved to Dashboard - Settings is now clean */}
+          {false && user && userStats && (
+            <div className="mb-12">
+              <h2 className="text-xl font-semibold mb-2" style={{ color: theme.text }}>
+                Your Progress
+              </h2>
+              <p className="text-sm mb-6" style={{ color: theme.textMuted }}>
+                Track your typing journey and achievements
+              </p>
+
+              {/* XP and Level Card */}
+              <div 
+                className="p-6 rounded-lg mb-6 relative overflow-hidden"
+                style={{ 
+                  backgroundColor: theme.bgSecondary,
+                  border: `2px solid ${theme.accent}`,
+                  boxShadow: `0 8px 32px ${theme.accent}30`
+                }}
+              >
+                {/* Animated background gradient */}
+                <div 
+                  className="absolute inset-0 opacity-5"
+                  style={{
+                    background: `linear-gradient(135deg, ${theme.accent}, ${theme.correct}, ${theme.accent})`,
+                    backgroundSize: '200% 200%',
+                    animation: 'gradient 3s ease infinite',
+                  }}
+                />
+
+                <div className="relative z-10">
+                  {/* Level and Title */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <span className="text-4xl font-bold" style={{ color: theme.accent }}>
+                          Level {userLevel}
+                        </span>
+                        <span className="text-2xl">{getLevelTitle(userLevel).split(' ')[0]}</span>
+                      </div>
+                      <p className="text-sm" style={{ color: theme.textMuted }}>
+                        {getLevelTitle(userLevel)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold" style={{ color: theme.correct }}>
+                        {userXP.toLocaleString()}
+                      </div>
+                      <div className="text-xs" style={{ color: theme.textMuted }}>
+                        Total XP
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* XP Progress Bar */}
+                  <div className="mb-2">
+                    <div 
+                      className="h-3 rounded-full overflow-hidden"
+                      style={{ backgroundColor: theme.buttonBg }}
+                    >
+                      <div 
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${calculateLevel(userXP).progressPercent}%`,
+                          backgroundColor: theme.accent,
+                          boxShadow: `0 0 10px ${theme.accent}80`
+                        }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-1 text-xs" style={{ color: theme.textMuted }}>
+                      <span>{calculateLevel(userXP).xpInCurrentLevel} XP</span>
+                      <span>{calculateLevel(userXP).xpNeededForNextLevel} XP to Level {userLevel + 1}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {/* Streak */}
+                <div 
+                  className="p-4 rounded-lg text-center relative overflow-hidden group cursor-pointer"
+                  style={{ 
+                    backgroundColor: theme.bgSecondary,
+                    border: `1px solid ${theme.border}`
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = theme.accent;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = theme.border;
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <div className="text-3xl mb-2">🔥</div>
+                  <div className="text-2xl font-bold mb-1" style={{ color: theme.accent }}>
+                    {userStats.currentStreak}
+                  </div>
+                  <div className="text-xs" style={{ color: theme.textMuted }}>
+                    Day Streak
+                  </div>
+                  {userStats.currentStreak >= 7 && (
+                    <div 
+                      className="absolute top-1 right-1 text-xs px-2 py-1 rounded"
+                      style={{ 
+                        backgroundColor: theme.accent + '20',
+                        color: theme.accent 
+                      }}
+                    >
+                      +{userStats.currentStreak >= 30 ? '100' : userStats.currentStreak >= 14 ? '50' : userStats.currentStreak >= 7 ? '25' : '10'}% XP
+                    </div>
+                  )}
+                </div>
+
+                {/* Tests Today */}
+                <div 
+                  className="p-4 rounded-lg text-center"
+                  style={{ 
+                    backgroundColor: theme.bgSecondary,
+                    border: `1px solid ${theme.border}`
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = theme.accent;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = theme.border;
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <div className="text-3xl mb-2">📝</div>
+                  <div className="text-2xl font-bold mb-1" style={{ color: theme.correct }}>
+                    {userStats.todayTests}
+                  </div>
+                  <div className="text-xs" style={{ color: theme.textMuted }}>
+                    Tests Today
+                  </div>
+                </div>
+
+                {/* Total Tests */}
+                <div 
+                  className="p-4 rounded-lg text-center"
+                  style={{ 
+                    backgroundColor: theme.bgSecondary,
+                    border: `1px solid ${theme.border}`
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = theme.accent;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = theme.border;
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <div className="text-3xl mb-2">🏆</div>
+                  <div className="text-2xl font-bold mb-1" style={{ color: theme.accent }}>
+                    {userStats.totalTests}
+                  </div>
+                  <div className="text-xs" style={{ color: theme.textMuted }}>
+                    Total Tests
+                  </div>
+                </div>
+
+                {/* Achievements */}
+                <div 
+                  className="p-4 rounded-lg text-center"
+                  style={{ 
+                    backgroundColor: theme.bgSecondary,
+                    border: `1px solid ${theme.border}`
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = theme.accent;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = theme.border;
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <div className="text-3xl mb-2">⭐</div>
+                  <div className="text-2xl font-bold mb-1" style={{ color: theme.correct }}>
+                    {userStats.unlockedAchievements}/{userStats.totalAchievements}
+                  </div>
+                  <div className="text-xs" style={{ color: theme.textMuted }}>
+                    Achievements
+                  </div>
+                </div>
+              </div>
+
+              {/* Performance Stats */}
+              <div 
+                className="p-6 rounded-lg mb-6"
+                style={{ 
+                  backgroundColor: theme.bgSecondary,
+                  border: `1px solid ${theme.border}`
+                }}
+              >
+                <h3 className="text-lg font-semibold mb-4" style={{ color: theme.text }}>
+                  Performance Stats
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  <div>
+                    <div className="text-sm mb-1" style={{ color: theme.textMuted }}>
+                      Best WPM
+                    </div>
+                    <div className="text-3xl font-bold" style={{ color: theme.accent }}>
+                      {userStats.bestWpm}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm mb-1" style={{ color: theme.textMuted }}>
+                      Average WPM
+                    </div>
+                    <div className="text-3xl font-bold" style={{ color: theme.textSecondary }}>
+                      {userStats.avgWpm}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm mb-1" style={{ color: theme.textMuted }}>
+                      Average Accuracy
+                    </div>
+                    <div className="text-3xl font-bold" style={{ color: theme.correct }}>
+                      {userStats.avgAccuracy}%
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm mb-1" style={{ color: theme.textMuted }}>
+                      Best Streak
+                    </div>
+                    <div className="text-3xl font-bold" style={{ color: theme.accent }}>
+                      {userStats.bestStreak} 🔥
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm mb-1" style={{ color: theme.textMuted }}>
+                      Perfect Tests
+                    </div>
+                    <div className="text-3xl font-bold" style={{ color: theme.correct }}>
+                      {userStats.perfectAccuracyCount} 💯
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Achievements Display */}
+              <div 
+                className="p-6 rounded-lg"
+                style={{ 
+                  backgroundColor: theme.bgSecondary,
+                  border: `1px solid ${theme.border}`
+                }}
+              >
+                <h3 className="text-lg font-semibold mb-4" style={{ color: theme.text }}>
+                  Achievements ({userStats.unlockedAchievements}/{userStats.totalAchievements})
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {Object.values(ACHIEVEMENTS).map((achievement) => {
+                    const unlocked = unlockedAchievements.includes(achievement.id);
+                    return (
+                      <div
+                        key={achievement.id}
+                        className="p-3 rounded-lg text-center transition-all duration-300"
+                        style={{
+                          backgroundColor: unlocked ? theme.accent + '20' : theme.buttonBg,
+                          border: `1px solid ${unlocked ? theme.accent : theme.border}`,
+                          opacity: unlocked ? 1 : 0.4,
+                          transform: unlocked ? 'scale(1)' : 'scale(0.95)'
+                        }}
+                        title={achievement.description}
+                      >
+                        <div className="text-3xl mb-1">{achievement.icon}</div>
+                        <div 
+                          className="text-xs font-semibold mb-1"
+                          style={{ color: unlocked ? theme.accent : theme.textMuted }}
+                        >
+                          {achievement.name}
+                        </div>
+                        {unlocked && (
+                          <div className="text-xs" style={{ color: theme.textMuted }}>
+                            +{achievement.xp} XP
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Theme Section */}
           <div className="mb-12">
             <h2 className="text-xl font-semibold mb-2" style={{ color: theme.text }}>
